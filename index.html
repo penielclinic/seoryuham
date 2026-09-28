@@ -245,7 +245,7 @@ const CATS = [
  {id:'사진·기타', c:'#6b7280', kw:[]}
 ];
 const CARDS = ['신한','삼성','현대','KB국민','국민','롯데','우리','하나','BC','비씨','NH농협','농협','씨티','카카오','토스','IBK기업','기업','새마을','수협','신협','우체국'];
-const INSURERS = [['삼성생명','삼성생명'],['삼성화재','삼성화재'],['한화생명','한화생명'],['한화손해','한화손해보험'],['한화손보','한화손해보험'],['교보생명','교보생명'],['교보라이프','교보라이프플래닛'],['신한라이프','신한라이프'],['신한생명','신한라이프'],['KB손해','KB손해보험'],['KB손보','KB손해보험'],['KB라이프','KB라이프'],['KB생명','KB라이프'],['현대해상','현대해상'],['DB손해','DB손해보험'],['DB손보','DB손해보험'],['DB생명','DB생명'],['메리츠화재','메리츠화재'],['메리츠','메리츠화재'],['롯데손해','롯데손해보험'],['롯데손보','롯데손해보험'],['흥국생명','흥국생명'],['흥국화재','흥국화재'],['NH농협생명','NH농협생명'],['농협생명','NH농협생명'],['NH농협손해','NH농협손해보험'],['농협손해','NH농협손해보험'],['미래에셋생명','미래에셋생명'],['동양생명','동양생명'],['ABL생명','ABL생명'],['AIA생명','AIA생명'],['라이나','라이나생명'],['푸본현대','푸본현대생명'],['처브','처브라이프'],['카디프','BNP파리바카디프'],['MG손해','MG손해보험'],['하나손해','하나손해보험'],['하나생명','하나생명'],['악사','AXA손해보험'],['AXA','AXA손해보험'],['iM라이프','iM라이프'],['DGB생명','iM라이프'],['KDB생명','KDB생명'],['IBK연금','IBK연금보험'],['우체국보험','우체국보험'],['새마을금고공제','새마을금고공제'],['수협보험','수협보험'],['캐롯','캐롯손해보험'],['카카오페이손해','카카오페이손해보험'],['국민건강보험','국민건강보험공단'],['건강보험공단','국민건강보험공단'],['국민연금','국민연금공단'],['근로복지공단','근로복지공단'],['고용보험','고용보험']];
+const INSURERS = [['삼성생명','삼성생명'],['삼성화재','삼성화재'],['한화생명','한화생명'],['한화손해','한화손해보험'],['한화손보','한화손해보험'],['교보생명','교보생명'],['교보라이프','교보라이프플래닛'],['신한라이프','신한라이프'],['신한생명','신한라이프'],['KB손해','KB손해보험'],['KB손보','KB손해보험'],['KB라이프','KB라이프'],['KB생명','KB라이프'],['현대해상','현대해상'],['DB손해','DB손해보험'],['DB손보','DB손해보험'],['DB생명','DB생명'],['메리츠화재','메리츠화재'],['메리츠','메리츠화재'],['롯데손해','롯데손해보험'],['롯데손보','롯데손해보험'],['흥국생명','흥국생명'],['흥국화재','흥국화재'],['NH농협생명','NH농협생명'],['농협생명','NH농협생명'],['NH농협손해','NH농협손해보험'],['농협손해','NH농협손해보험'],['미래에셋생명','미래에셋생명'],['동양생명','동양생명'],['동양','동양생명'],['ABL생명','ABL생명'],['AIA생명','AIA생명'],['라이나','라이나생명'],['푸본현대','푸본현대생명'],['처브','처브라이프'],['카디프','BNP파리바카디프'],['MG손해','MG손해보험'],['하나손해','하나손해보험'],['하나생명','하나생명'],['악사','AXA손해보험'],['AXA','AXA손해보험'],['iM라이프','iM라이프'],['DGB생명','iM라이프'],['KDB생명','KDB생명'],['IBK연금','IBK연금보험'],['우체국보험','우체국보험'],['새마을금고공제','새마을금고공제'],['수협보험','수협보험'],['캐롯','캐롯손해보험'],['카카오페이손해','카카오페이손해보험'],['국민건강보험','국민건강보험공단'],['건강보험공단','국민건강보험공단'],['국민연금','국민연금공단'],['근로복지공단','근로복지공단'],['고용보험','고용보험']];
 const TAXES = [['부가가치세','부가가치세'],['부가세','부가가치세'],['종합소득세','종합소득세'],['원천징수','원천세'],['원천세','원천세'],['지방소득세','지방세'],['지방세','지방세'],['재산세','재산세'],['자동차세','자동차세'],['면허세','면허세'],['사업소득','사업소득'],['세금계산서','세금계산서'],['계산서','계산서']];
 
 function classify(text, filename){
@@ -331,6 +331,11 @@ async function getOCR(){
 async function ocrImage(src, onp){
   try{ const w=await getOCR(); const r=await w.recognize(src); return r.data.text||''; }
   catch(e){ console.warn('OCR 실패',e); return ''; }
+}
+async function ocrPdfFirstPage(file){
+  try{ const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise; const p=await pdf.getPage(1); const vp=p.getViewport({scale:2});
+    const cv=document.createElement('canvas'); cv.width=vp.width; cv.height=vp.height; await p.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+    return await ocrImage(cv); }catch(e){ console.warn('첫장 OCR 실패',e); return ''; }
 }
 async function extractText(file, onp){
   const ext=(file.name.split('.').pop()||'').toLowerCase();
@@ -508,9 +513,14 @@ async function addFiles(files){
   for(let i=0;i<list.length;i++){
     const f=list[i], row=rows[i], bar=row.querySelector('i'), st=row.querySelector('.st');
     st.textContent='읽는 중'; bar.style.width='15%';
-    const text=await extractText(f,p=>bar.style.width=(15+p*60)+'%');
+    let text=await extractText(f,p=>bar.style.width=(15+p*60)+'%');
     bar.style.width='80%'; st.textContent='분류 중';
-    const cl=classify(text,f.name);
+    let cl=classify(text,f.name);
+    // 회사명이 로고 이미지로만 있는 PDF: 첫 페이지 OCR로 한 번 더
+    if(!cl.sub && ['보험','카드명세서','은행·금융','세금계산서'].includes(cl.category) && (f.name.toLowerCase().endsWith('.pdf')||f.type==='application/pdf') && $('ocr').checked){
+      st.textContent='회사명 찾는 중(OCR)';
+      const extra=await ocrPdfFirstPage(f); if(extra){ text=(text+'\n'+extra).slice(0,20000); cl=classify(text,f.name); }
+    }
     const rec={
       id:Date.now()+'-'+Math.random().toString(36).slice(2,8),
       name:f.name, title:f.name.replace(/\.[^.]+$/,''), type:f.type||'', ext:(f.name.split('.').pop()||'').toLowerCase(), size:f.size,
@@ -624,7 +634,14 @@ $('closeD').onclick=closeDoc; $('drawer').onclick=e=>{if(e.target===$('drawer'))
 $('dSave').onclick=async()=>{ if(!cur)return; Object.assign(cur,{title:$('dTitle').value,category:$('dCat').value,sub:$('dSub').value.trim(),vendor:$('dVendor').value.trim(),date:$('dDate').value,amount:$('dAmount').value===''?null:+$('dAmount').value,memo:$('dMemo').value}); await put(cur);
   if(driveOn()){ try{ if(cur.driveId) await driveUpdate(cur); else if(cur.blob) await driveUpload(cur), await put(cur); }catch(e){ toast('드라이브 반영 실패: '+e.message); } }
   await reload(); driveSaveIndexSoon(); toast('저장했습니다'); closeDoc(); };
-$('dReclass').onclick=()=>{ if(!cur)return; const cl=classify(cur.text,cur.name); $('dCat').value=cl.category; $('dSub').value=cl.sub; $('dVendor').value=extractVendor(cur.text,cur.name,cl.category)||cur.vendor||''; $('dDate').value=extractDate(cur.text,cur.name)||cur.date; const a=extractAmount(cur.text); if(a!=null)$('dAmount').value=a; toast('다시 분류했습니다. 확인 후 저장하세요'); };
+$('dReclass').onclick=async()=>{ if(!cur)return;
+  let cl=classify(cur.text,cur.name);
+  if(!cl.sub && $('ocr').checked && cur.blob && (cur.ext==='pdf'||(cur.type||'').startsWith('image/'))){
+    toast('회사명을 찾기 위해 글자를 읽는 중…');
+    let extra=''; if(cur.ext==='pdf') extra=await ocrPdfFirstPage(cur.blob); else { const u=URL.createObjectURL(cur.blob); extra=await ocrImage(u); URL.revokeObjectURL(u); }
+    if(extra){ cur.text=((cur.text||'')+'\n'+extra).slice(0,20000); $('dText').textContent=cur.text; cl=classify(cur.text,cur.name); }
+  }
+  $('dCat').value=cl.category; $('dSub').value=cl.sub; $('dVendor').value=extractVendor(cur.text,cur.name,cl.category)||cur.vendor||''; $('dDate').value=extractDate(cur.text,cur.name)||cur.date; const a=extractAmount(cur.text); if(a!=null)$('dAmount').value=a; toast('다시 분류했습니다. 확인 후 저장하세요'); };
 $('dDown').onclick=async()=>{ if(!cur)return; if(!cur.blob&&cur.driveId&&driveOn()){ try{ await driveFetchBlob(cur); curURL=URL.createObjectURL(cur.blob); }catch(e){ toast('가져오기 실패'); return; } } if(!cur.blob){ if(cur.driveLink) window.open(cur.driveLink,'_blank'); return; } const a=document.createElement('a'); a.href=curURL||URL.createObjectURL(cur.blob); a.download=cur.name; a.click(); };
 $('dDel').onclick=()=>$('dConfirm').classList.add('show'); $('dDelNo').onclick=()=>$('dConfirm').classList.remove('show');
 $('dDelYes').onclick=async()=>{ if(!cur)return; if(driveOn()&&cur.driveId){ try{ await driveTrash(cur); }catch(e){ toast('드라이브 휴지통 이동 실패: '+e.message); } } await del(cur.id); await reload(); driveSaveIndexSoon(); toast('삭제했습니다'); closeDoc(); };
