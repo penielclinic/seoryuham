@@ -100,8 +100,8 @@ tr.r:hover td{background:var(--soft);cursor:pointer}
 <div class="wrap">
 <header>
   <div>
-    <h1>서류함 대시보드 <span class="hint" style="font-weight:400">v1.4</span></h1>
-    <div class="sub">파일을 넣거나 사진을 찍으면 종류·날짜·거래처를 읽어 자동으로 분류합니다. 구글 드라이브를 연결하면 <b>서류함/종류/연-월</b> 폴더에 자동 저장되고 어느 기기에서든 불러올 수 있습니다.</div>
+    <h1>서류함 대시보드 <span class="hint" style="font-weight:400">v1.5</span></h1>
+    <div class="sub">파일을 넣거나 사진을 찍으면 종류·날짜·거래처를 읽어 자동으로 분류합니다. 구글 드라이브를 연결하면 <b>서류함/종류/회사</b> 폴더에 자동 저장되고 어느 기기에서든 불러올 수 있습니다.</div>
   </div>
   <div class="search">
     <input type="text" id="q" placeholder="검색: 거래처, 파일명, 금액, 본문 내용…">
@@ -423,9 +423,11 @@ function driveMeta(rec){
   return {docbox:'1',id:rec.id,cat:rec.category||'',sub:(rec.sub||'').slice(0,60),vendor:(rec.vendor||'').slice(0,60),date:rec.date||'',amount:rec.amount==null?'':String(rec.amount),title:(rec.title||'').slice(0,100)};
 }
 const driveFileName=rec=>safeName(`${rec.date||'날짜미정'}_${rec.vendor||rec.sub||''}_${rec.name}`);
+// 폴더 구조: 서류함 / 종류 / 회사(보험사·카드사·세목·거래처) / 파일
+const subFolderName=rec=>safeName(rec.sub||rec.vendor||'기타')||'기타';
 async function driveTargetFolder(rec){
   const root=await driveRoot(); const cat=await ensureFolder(safeName(rec.category||'사진·기타'),root);
-  return ensureFolder((rec.date||'').slice(0,7)||'날짜미정',cat);
+  return ensureFolder(subFolderName(rec),cat);
 }
 async function driveUpload(rec){
   if(!rec.blob) return;
@@ -547,7 +549,7 @@ async function addFiles(files){
 }
 async function saveToFolder(rec){
   const cat=await dirHandle.getDirectoryHandle(rec.category.replace(/[\\/:*?"<>|]/g,'_'),{create:true});
-  const ym=await cat.getDirectoryHandle((rec.date||'미정').slice(0,7),{create:true});
+  const ym=await cat.getDirectoryHandle(subFolderName(rec),{create:true});
   const name=`${rec.date||''}_${rec.vendor||rec.sub||''}_${rec.name}`.replace(/[\\/:*?"<>|]/g,'_');
   const fh=await ym.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(rec.blob); await w.close();
 }
