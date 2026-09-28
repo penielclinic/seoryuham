@@ -100,7 +100,7 @@ tr.r:hover td{background:var(--soft);cursor:pointer}
 <div class="wrap">
 <header>
   <div>
-    <h1>서류함 대시보드</h1>
+    <h1>서류함 대시보드 <span class="hint" style="font-weight:400">v1.4</span></h1>
     <div class="sub">파일을 넣거나 사진을 찍으면 종류·날짜·거래처를 읽어 자동으로 분류합니다. 구글 드라이브를 연결하면 <b>서류함/종류/연-월</b> 폴더에 자동 저장되고 어느 기기에서든 불러올 수 있습니다.</div>
   </div>
   <div class="search">
@@ -110,6 +110,7 @@ tr.r:hover td{background:var(--soft);cursor:pointer}
   <div class="row">
     <button class="primary" id="driveBtn">구글 드라이브 연결</button>
     <button id="driveLoadBtn" hidden>드라이브에서 불러오기</button>
+    <button id="driveSyncBtn" hidden>안 올라간 항목 올리기</button>
     <a id="driveOpen" hidden target="_blank" rel="noopener"><button type="button">드라이브 폴더 열기</button></a>
     <button id="exportBtn">백업 내보내기</button>
     <button id="importBtn">백업 불러오기</button>
@@ -489,19 +490,26 @@ async function driveLoad(){
 }
 function driveUI(on){
   $('driveBtn').textContent=on?'드라이브 연결됨':'구글 드라이브 연결'; $('driveBtn').classList.toggle('primary',!on);
-  $('driveLoadBtn').hidden=!on; $('driveOpen').hidden=!(on&&DRIVE.root); if(DRIVE.root) $('driveOpen').href='https://drive.google.com/drive/folders/'+DRIVE.root;
+  $('driveLoadBtn').hidden=!on; $('driveSyncBtn').hidden=!on; $('driveOpen').hidden=!(on&&DRIVE.root); if(DRIVE.root) $('driveOpen').href='https://drive.google.com/drive/folders/'+DRIVE.root;
+}
+async function driveSyncPending(){
+  const pend=docs.filter(d=>d.blob&&!d.driveId); if(!pend.length) return 0;
+  $('status').textContent=`드라이브에 안 올라간 ${pend.length}건을 올리는 중…`; let n=0;
+  for(const d of pend){ try{ await driveUpload(d); await put(d); n++; $('status').textContent=`드라이브 업로드 ${n}/${pend.length}`; }catch(e){ console.warn(e); } }
+  await reload(); driveSaveIndexSoon(); $('status').textContent=''; toast(`드라이브에 ${n}건 올렸습니다`); return n;
 }
 async function driveConnect(interactive){
   if(!DRIVE.clientId){ $('drivePanel').hidden=false; $('clientId').value=''; return; }
   if(location.protocol==='file:'){ $('drivePanel').hidden=false; $('driveInfo').textContent='file:// 주소에서는 구글 로그인이 되지 않습니다. Vercel 등에 올린 https 주소나 http://localhost 로 여세요.'; return; }
   try{ await driveSignIn(interactive); await driveRoot(); driveUI(true); try{localStorage.setItem('docbox_drive_auto','1')}catch(e){}
-    if(interactive) toast('구글 드라이브에 연결했습니다'); }
+    if(interactive) toast('구글 드라이브에 연결했습니다'); driveSyncPending().catch(e=>console.warn(e)); }
   catch(e){ if(interactive) toast('연결 실패: '+e.message); driveUI(false); }
 }
 $('driveBtn').onclick=()=>{ if(driveOn()){ $('drivePanel').hidden=!$('drivePanel').hidden; $('clientId').value=DRIVE.clientId; } else driveConnect(true); };
 $('clientSave').onclick=()=>{ const v=$('clientId').value.trim(); if(!v.endsWith('.apps.googleusercontent.com')){ toast('클라이언트 ID 형식이 아닙니다'); return; } DRIVE.clientId=v; try{localStorage.setItem('docbox_client_id',v)}catch(e){} $('drivePanel').hidden=true; driveConnect(true); };
 $('clientCancel').onclick=()=>$('drivePanel').hidden=true;
 $('driveLoadBtn').onclick=()=>driveLoad().catch(e=>toast('불러오기 실패: '+e.message));
+$('driveSyncBtn').onclick=async()=>{ const n=await driveSyncPending().catch(e=>{toast('올리기 실패: '+e.message);return -1;}); if(n===0) toast('모든 항목이 이미 드라이브에 있습니다'); };
 
 /* ===================== 입력 처리 ===================== */
 let dirHandle=null;
