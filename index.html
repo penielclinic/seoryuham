@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>서류함 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 레이아웃: 상단 요약 타일 → 입력 상자 → 필터 + 목록. 서류철 색인 카드 느낌의 짙은 남색 + 종이색 */
+:root{
+  --bg:#f3f1ec; --paper:#fffdf8; --ink:#1f2430; --muted:#6b7080; --line:#dcd7cc;
+  --accent:#1d4e89; --accent-ink:#ffffff; --soft:#e6edf7;
+  --ok:#2e7d4f; --warn:#b26a00; --bad:#b3261e;
+  --sans:"Noto Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#171a21; --paper:#1f2330; --ink:#e9e7e1; --muted:#9aa0ae; --line:#333a4a;
+  --accent:#7fa8e0; --accent-ink:#0f1a2b; --soft:#232c3d; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#171a21; --paper:#1f2330; --ink:#e9e7e1; --muted:#9aa0ae; --line:#333a4a;
+  --accent:#7fa8e0; --accent-ink:#0f1a2b; --soft:#232c3d; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}
+.wrap{max-width:1240px;margin:0 auto;padding-block:16px 48px;padding-inline:16px}
+h1{font-size:20px;margin:0;font-weight:700;letter-spacing:-.01em}
+h2{font-size:14px;margin:0 0 10px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+header .sub{color:var(--muted);font-size:12px}
+.search{display:flex;gap:8px;flex:1;min-width:240px;max-width:520px}
+input,select,textarea,button{font-family:inherit;font-size:14px;color:var(--ink)}
+input[type=text],input[type=date],input[type=number],select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);background:var(--paper)}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{cursor:pointer;border:1px solid var(--line);background:var(--paper);padding:8px 12px;border-radius:var(--r);font-weight:500}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.danger{color:var(--bad);border-color:var(--bad)}
+button:disabled{opacity:.5;cursor:default}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.tile{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:2px;border-left:4px solid var(--c,var(--accent))}
+.tile.active{outline:2px solid var(--accent)}
+.tile .n{font-family:var(--mono);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums}
+.tile .l{font-size:12px;color:var(--muted)}
+.tile .s{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:16px}
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:22px 14px;text-align:center;color:var(--muted);transition:.15s}
+.drop.over{border-color:var(--accent);background:var(--soft);color:var(--ink)}
+.drop strong{color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row.top{margin-top:10px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px}
+.tablewrap{overflow-x:auto;background:var(--paper);border:1px solid var(--line);border-radius:var(--r)}
+table{width:100%;border-collapse:collapse;min-width:760px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;white-space:nowrap}
+th{font-size:12px;color:var(--muted);font-weight:500;background:var(--soft);position:sticky;top:0;cursor:pointer;user-select:none}
+td.name{max-width:280px;overflow:hidden;text-overflow:ellipsis}
+td.num{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+tr.r:hover td{background:var(--soft);cursor:pointer}
+.chip{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;background:var(--soft);color:var(--ink);border-left:3px solid var(--c,var(--accent))}
+.status{font-size:12px;color:var(--muted);min-height:18px;font-family:var(--mono)}
+.queue{display:flex;flex-direction:column;gap:4px;margin-top:8px;font-size:12px}
+.queue div{display:flex;gap:8px;align-items:center}
+.bar{height:6px;background:var(--soft);border-radius:3px;flex:1;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0}
+.empty{padding:32px;text-align:center;color:var(--muted)}
+/* 상세 서랍 */
+.drawer{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:20}
+.drawer.open{display:block}
+.sheet{position:absolute;right:0;top:0;bottom:0;width:min(920px,100%);background:var(--bg);overflow:auto;padding:16px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,1fr);gap:14px;align-content:start}
+@media (max-width:760px){.sheet{grid-template-columns:1fr}}
+.preview{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);min-height:320px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.preview img{max-width:100%;max-height:78vh;object-fit:contain}
+.preview iframe{width:100%;height:78vh;border:0}
+.preview pre{white-space:pre-wrap;font-family:var(--mono);font-size:12px;padding:12px;max-height:78vh;overflow:auto;width:100%;margin:0}
+.meta{display:flex;flex-direction:column;gap:8px}
+.meta .row{justify-content:space-between}
+.hint{font-size:12px;color:var(--muted)}
+.confirm{display:none;background:var(--soft);padding:10px;border-radius:var(--r);gap:8px;align-items:center}
+.confirm.show{display:flex}
+/* 카메라 */
+.cam{position:fixed;inset:0;background:#000;display:none;z-index:30;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.cam.open{display:flex}
+.cam video{max-width:100%;max-height:80vh}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:var(--r);font-size:13px;display:none;z-index:40}
+.toast.show{display:block}
+.group{margin-top:12px}
+.group summary{cursor:pointer;font-weight:500;padding:6px 0}
+.subtable{margin-left:8px;font-size:13px}
+.subtable td{padding:4px 8px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>서류함 대시보드</h1>
+    <div class="sub">파일을 넣거나 사진을 찍으면 종류·날짜·거래처를 읽어 자동으로 분류합니다. 구글 드라이브를 연결하면 <b>서류함/종류/연-월</b> 폴더에 자동 저장되고 어느 기기에서든 불러올 수 있습니다.</div>
+  </div>
+  <div class="search">
+    <input type="text" id="q" placeholder="검색: 거래처, 파일명, 금액, 본문 내용…">
+    <button id="clearq">지움</button>
+  </div>
+  <div class="row">
+    <button class="primary" id="driveBtn">구글 드라이브 연결</button>
+    <button id="driveLoadBtn" hidden>드라이브에서 불러오기</button>
+    <a id="driveOpen" hidden target="_blank" rel="noopener"><button type="button">드라이브 폴더 열기</button></a>
+    <button id="exportBtn">백업 내보내기</button>
+    <button id="importBtn">백업 불러오기</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+    <button id="folderBtn" title="Chrome/Edge에서 지원">PC 폴더에도 저장</button>
+  </div>
+</header>
+
+<div class="panel" id="drivePanel" hidden>
+  <h2>구글 드라이브 설정</h2>
+  <div class="hint" style="margin-bottom:8px">Google Cloud Console에서 발급한 OAuth 클라이언트 ID를 한 번만 넣어 두면 됩니다. (설정 방법은 함께 드린 안내를 참고)</div>
+  <div class="row">
+    <input type="text" id="clientId" placeholder="예: 1234567890-abc123.apps.googleusercontent.com" style="flex:1;min-width:260px">
+    <button class="primary" id="clientSave">저장하고 로그인</button>
+    <button id="clientCancel">닫기</button>
+  </div>
+  <div class="hint" id="driveInfo" style="margin-top:6px">이 파일은 file:// 로 열면 구글 로그인이 되지 않습니다. Vercel 등에 올린 주소(https://…) 또는 http://localhost 로 여세요.</div>
+</div>
+
+<div class="tiles" id="tiles"></div>
+
+<div class="panel">
+  <h2>자료 입력</h2>
+  <div class="drop" id="drop">
+    <strong>여기에 파일을 끌어다 놓으세요</strong><br>
+    PDF, 이미지, HWP/HWPX, DOCX, PPTX, XLSX, HTML, TXT 등 모든 형식 · 여러 개 한 번에 가능
+    <div class="row top" style="justify-content:center">
+      <button class="primary" id="pickBtn">파일 선택</button>
+      <button id="camBtn">사진 찍어 저장</button>
+      <button id="manualBtn">직접 입력</button>
+      <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="ocr" checked> 이미지 글자 읽기(OCR)</label>
+    </div>
+    <input type="file" id="pick" multiple hidden>
+    <input type="file" id="camPick" accept="image/*" capture="environment" hidden>
+  </div>
+  <div class="status" id="status"></div>
+  <div class="queue" id="queue"></div>
+  <div id="manual" hidden style="margin-top:12px">
+    <div class="grid2">
+      <label class="f">제목 <input type="text" id="mTitle" placeholder="예: 2026-09 신한카드 이용대금"></label>
+      <label class="f">종류 <select id="mCat"></select></label>
+      <label class="f">거래처 / 발행처 <input type="text" id="mVendor"></label>
+      <label class="f">날짜 <input type="date" id="mDate"></label>
+      <label class="f">금액(원) <input type="number" id="mAmount"></label>
+      <label class="f">세부(카드사·세목 등) <input type="text" id="mSub"></label>
+    </div>
+    <label class="f" style="margin-top:8px">메모 / 내용 <textarea id="mMemo" rows="3"></textarea></label>
+    <div class="row top"><button class="primary" id="mSave">저장</button><button id="mCancel">취소</button></div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>찾아보기</h2>
+  <div class="filters">
+    <label class="f">종류 <select id="fCat"><option value="">전체</option></select></label>
+    <label class="f">세부 <select id="fSub"><option value="">전체</option></select></label>
+    <label class="f">거래처 <select id="fVendor"><option value="">전체</option></select></label>
+    <label class="f">연도 <select id="fYear"><option value="">전체</option></select></label>
+    <label class="f">월 <select id="fMonth"><option value="">전체</option></select></label>
+    <label class="f">보기 <select id="fView"><option value="list">목록</option><option value="vendor">거래처별 묶음</option><option value="month">월별 묶음</option><option value="sub">세부별 묶음</option></select></label>
+  </div>
+  <div class="row" style="justify-content:space-between;margin-bottom:8px">
+    <div class="status" id="count"></div>
+    <div class="status" id="sum"></div>
+  </div>
+  <div id="list"></div>
+</div>
+</div>
+
+<!-- 상세 서랍 -->
+<div class="drawer" id="drawer">
+  <div class="sheet">
+    <div class="preview" id="preview"></div>
+    <div class="meta">
+      <div class="row"><strong id="dName" style="min-width:0;overflow:hidden;text-overflow:ellipsis"></strong><button id="closeD">닫기</button></div>
+      <label class="f">제목 <input type="text" id="dTitle"></label>
+      <label class="f">종류 <select id="dCat"></select></label>
+      <label class="f">세부(카드사·세목 등) <input type="text" id="dSub" list="subList"></label>
+      <label class="f">거래처 / 발행처 <input type="text" id="dVendor" list="vendorList"></label>
+      <div class="grid2">
+        <label class="f">날짜 <input type="date" id="dDate"></label>
+        <label class="f">금액(원) <input type="number" id="dAmount"></label>
+      </div>
+      <label class="f">메모 <textarea id="dMemo" rows="3"></textarea></label>
+      <div class="hint" id="dInfo"></div>
+      <details><summary class="hint">읽어낸 본문 보기</summary><pre id="dText" style="white-space:pre-wrap;font-family:var(--mono);font-size:12px;max-height:200px;overflow:auto"></pre></details>
+      <div class="row">
+        <button class="primary" id="dSave">변경 저장</button>
+        <button id="dDown">원본 내려받기</button>
+        <button id="dReclass">다시 분류</button>
+        <button class="danger" id="dDel">삭제</button>
+      </div>
+      <div class="confirm" id="dConfirm">정말 삭제할까요? <button class="danger" id="dDelYes">삭제</button><button id="dDelNo">취소</button></div>
+    </div>
+  </div>
+</div>
+<datalist id="subList"></datalist>
+<datalist id="vendorList"></datalist>
+
+<!-- 카메라 -->
+<div class="cam" id="cam">
+  <video id="video" autoplay playsinline></video>
+  <div class="row">
+    <button class="primary" id="shot">촬영</button>
+    <button id="camClose">닫기</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js"></script>
+<script>
+/* ===================== 공통 도구 ===================== */
+const $=id=>document.getElementById(id);
+const fmt=n=>n==null||n===''?'':Number(n).toLocaleString('ko-KR');
+const toast=(m)=>{const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)};
+
+/* ===================== 분류 규칙 ===================== */
+const CATS = [
+ {id:'거래명세서', c:'#1d4e89', kw:[['거래명세서',8],['거래명세표',8],['납품서',6],['거래내역서',4],['명세서',2],['공급받는자',2],['수량',1],['단가',1]]},
+ {id:'세금계산서', c:'#7a3e9d', kw:[['세금계산서',9],['전자세금계산서',9],['계산서',5],['공급가액',4],['세액',3],['부가가치세',5],['부가세',4],['종합소득세',6],['원천징수',6],['지방소득세',6],['납세',4],['국세청',4],['홈택스',4],['위택스',4],['세금',3],['납부서',3]]},
+ {id:'카드명세서', c:'#b26a00', kw:[['이용대금명세서',9],['카드이용대금',9],['이용대금',6],['카드명세서',8],['결제예정',5],['카드사',3],['신용카드',3],['체크카드',3],['이용내역',3],['할부',2]]},
+ {id:'영수증', c:'#2e7d4f', kw:[['영수증',8],['현금영수증',8],['승인번호',4],['승인금액',4],['결제금액',3],['가맹점',3],['영수',2]]},
+ {id:'은행·금융', c:'#0e7c86', kw:[['거래내역',5],['입금',3],['출금',3],['이체',3],['통장',4],['계좌',3],['잔액',3],['은행',3],['예금',3],['대출',4]]},
+ {id:'계약서', c:'#8a4b2a', kw:[['계약서',9],['계약',4],['약정',4],['갑과',2],['을은',2],['임대차',5],['약관',2]]},
+ {id:'급여·인사', c:'#5b6b2a', kw:[['급여',6],['급여명세',8],['임금',5],['근로계약',7],['4대보험',5],['국민연금',3],['건강보험',3],['고용보험',3],['퇴직',4],['연차',2]]},
+ {id:'보험', c:'#a63d5c', kw:[['보험료',6],['보험증권',8],['보험금',5],['보험',4],['피보험자',5],['계약자',2]]},
+ {id:'공문·행정', c:'#4b5563', kw:[['공문',8],['공고',5],['신고',3],['허가',4],['보건소',5],['의료기관',4],['심사평가원',5],['건강보험공단',5],['협조요청',4],['안내문',3],['시행',2]]},
+ {id:'의료·진료', c:'#c2410c', kw:[['진단서',7],['소견서',7],['진료',3],['처방',4],['검사결과',5],['환자',3],['입원',3]]},
+ {id:'사진·기타', c:'#6b7280', kw:[]}
+];
+const CARDS = ['신한','삼성','현대','KB국민','국민','롯데','우리','하나','BC','비씨','NH농협','농협','씨티','카카오','토스','IBK기업','기업','새마을','수협','신협','우체국'];
+const TAXES = [['부가가치세','부가가치세'],['부가세','부가가치세'],['종합소득세','종합소득세'],['원천징수','원천세'],['원천세','원천세'],['지방소득세','지방세'],['지방세','지방세'],['재산세','재산세'],['자동차세','자동차세'],['면허세','면허세'],['사업소득','사업소득'],['세금계산서','세금계산서'],['계산서','계산서']];
+
+function classify(text, filename){
+  const t = (text||'').replace(/\s+/g,' ');
+  const f = (filename||'');
+  let best = {id:'사진·기타', score:0};
+  for(const c of CATS){
+    let s=0;
+    for(const [k,w] of c.kw){
+      if(f.includes(k)) s += w*3;
+      const n = (t.match(new RegExp(k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'))||[]).length;
+      if(n) s += w*Math.min(n,4);
+    }
+    if(s>best.score) best={id:c.id,score:s};
+  }
+  // 세부
+  let sub='';
+  const all = f+' '+t;
+  if(best.id==='카드명세서'||best.id==='영수증'){
+    for(const cd of CARDS){ if(all.includes(cd+'카드')||all.includes(cd)){ sub = cd.replace('국민','KB국민').replace('KBKB','KB').replace('농협','NH농협').replace('NHNH','NH').replace('비씨','BC')+'카드'; break; } }
+  } else if(best.id==='세금계산서'){
+    for(const [k,v] of TAXES){ if(all.includes(k)){ sub=v; break; } }
+  } else if(best.id==='은행·금융'){
+    for(const b of ['국민','신한','우리','하나','농협','기업','부산','대구','경남','카카오','토스','새마을','수협','우체국','SC제일','씨티']){ if(all.includes(b+'은행')||all.includes(b)){ sub=b+'은행'; break; } }
+  }
+  return {category:best.id, sub, confidence:best.score};
+}
+function extractDate(text, filename){
+  const src = (filename||'')+' '+(text||'');
+  const re = /(20\d{2})\s*[.\-\/년]\s*(\d{1,2})\s*[.\-\/월]\s*(\d{1,2})/g;
+  let m, dates=[];
+  while((m=re.exec(src))){ const y=+m[1],mo=+m[2],d=+m[3]; if(mo>=1&&mo<=12&&d>=1&&d<=31) dates.push(`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`); }
+  if(dates.length) return dates[0];
+  const re2=/(20\d{2})\s*[.\-\/년]\s*(\d{1,2})\s*월?/g;
+  if((m=re2.exec(src))){ const mo=+m[2]; if(mo>=1&&mo<=12) return `${m[1]}-${String(mo).padStart(2,'0')}-01`; }
+  const re3=/(20\d{2})(\d{2})(\d{2})/.exec(filename||'');
+  if(re3 && +re3[2]<=12 && +re3[3]<=31) return `${re3[1]}-${re3[2]}-${re3[3]}`;
+  return '';
+}
+function extractAmount(text){
+  const t=text||'';
+  const keys=['합계금액','총합계','합계','총액','청구금액','결제금액','승인금액','납부할금액','납부금액','결제예정금액','총결제','공급가액'];
+  for(const k of keys){
+    const re=new RegExp(k+'[^0-9]{0,20}([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,})');
+    const m=re.exec(t); if(m) return +m[1].replace(/,/g,'');
+  }
+  const nums=[...t.matchAll(/([0-9]{1,3}(?:,[0-9]{3})+)\s*원/g)].map(m=>+m[1].replace(/,/g,''));
+  if(nums.length) return Math.max(...nums);
+  return null;
+}
+function extractVendor(text, filename, cat){
+  const t=text||'';
+  const keys=['상호','공급자','거래처','가맹점명','가맹점','발행처','업체명','회사명','기관명','보험사'];
+  for(const k of keys){
+    const re=new RegExp(k+'\\s*[:：)\\]]?\\s*([가-힣A-Za-z0-9()&㈜\\-]{2,20})');
+    const m=re.exec(t); if(m && !['등록번호','사업자'].some(x=>m[1].includes(x))) return m[1].replace(/^(주식회사|㈜)/,'').trim();
+  }
+  // 파일명에서 한글 단어 추출
+  const words=(filename||'').replace(/\.[^.]+$/,'').split(/[\s_\-\.\[\]\(\)]+/).filter(w=>/[가-힣]{2,}/.test(w) && !/명세|계산서|영수증|카드|세금|스캔|사진|image|img|scan/i.test(w));
+  return words[0]||'';
+}
+
+/* ===================== 저장소 (IndexedDB) ===================== */
+let db;
+function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open('docbox',1); r.onupgradeneeded=e=>{ const d=e.target.result; d.createObjectStore('docs',{keyPath:'id'}); }; r.onsuccess=e=>{db=e.target.result;res(db)}; r.onerror=()=>rej(r.error); }); }
+const tx=(mode)=>db.transaction('docs',mode).objectStore('docs');
+const put=(o)=>new Promise((res,rej)=>{const r=tx('readwrite').put(o);r.onsuccess=res;r.onerror=()=>rej(r.error)});
+const del=(id)=>new Promise((res,rej)=>{const r=tx('readwrite').delete(id);r.onsuccess=res;r.onerror=()=>rej(r.error)});
+const getAll=()=>new Promise((res,rej)=>{const r=tx('readonly').getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+let docs=[];
+
+/* ===================== 텍스트 추출 ===================== */
+if(window.pdfjsLib){ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; }
+let ocrWorker=null;
+async function getOCR(){
+  if(ocrWorker) return ocrWorker;
+  ocrWorker = await Tesseract.createWorker(['kor','eng'],1,{logger:()=>{}});
+  return ocrWorker;
+}
+async function ocrImage(src, onp){
+  try{ const w=await getOCR(); const r=await w.recognize(src); return r.data.text||''; }
+  catch(e){ console.warn('OCR 실패',e); return ''; }
+}
+async function extractText(file, onp){
+  const ext=(file.name.split('.').pop()||'').toLowerCase();
+  const type=file.type||'';
+  try{
+    if(type.startsWith('text/')||['txt','csv','md','htm','html','xml','json'].includes(ext)){
+      let s=await file.text(); if(['htm','html'].includes(ext)) s=s.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi,'').replace(/<[^>]+>/g,' ');
+      return s.slice(0,20000);
+    }
+    if(ext==='pdf'||type==='application/pdf'){
+      const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+      let out=''; const n=Math.min(pdf.numPages,10);
+      for(let i=1;i<=n;i++){ const p=await pdf.getPage(i); const c=await p.getTextContent(); out+=c.items.map(it=>it.str).join(' ')+'\n'; onp&&onp(i/n*0.6); }
+      if(out.trim().length<30 && document.getElementById('ocr').checked){
+        // 스캔 PDF → 첫 페이지 OCR
+        const p=await pdf.getPage(1); const vp=p.getViewport({scale:2}); const cv=document.createElement('canvas'); cv.width=vp.width; cv.height=vp.height;
+        await p.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+        onp&&onp(0.7); out+=await ocrImage(cv);
+      }
+      return out.slice(0,20000);
+    }
+    if(['docx','pptx','xlsx','hwpx'].includes(ext)){
+      if(ext==='xlsx'){ const wb=XLSX.read(await file.arrayBuffer(),{type:'array'}); let out=''; wb.SheetNames.slice(0,5).forEach(n=>{out+=XLSX.utils.sheet_to_csv(wb.Sheets[n])+'\n'}); return out.slice(0,20000); }
+      const zip=await JSZip.loadAsync(await file.arrayBuffer()); let out='';
+      const files=Object.keys(zip.files).filter(n=>/(word\/document\.xml|ppt\/slides\/slide\d+\.xml|Contents\/section\d+\.xml)$/i.test(n)).sort();
+      for(const n of files.slice(0,20)){ const x=await zip.files[n].async('string'); out+=x.replace(/<[^>]+>/g,' ').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')+'\n'; }
+      return out.replace(/\s+/g,' ').slice(0,20000);
+    }
+    if(['xls','csv'].includes(ext)){ const wb=XLSX.read(await file.arrayBuffer(),{type:'array'}); let out=''; wb.SheetNames.slice(0,5).forEach(n=>{out+=XLSX.utils.sheet_to_csv(wb.Sheets[n])+'\n'}); return out.slice(0,20000); }
+    if(ext==='hwp'){
+      // 구형 HWP: 압축된 본문은 읽지 못하므로 문서 요약(미리보기 텍스트)만 시도
+      const buf=new Uint8Array(await file.arrayBuffer()); let s='';
+      // UTF-16LE 로 보이는 한글 구간 추출
+      for(let i=0;i<Math.min(buf.length,400000)-1;i+=2){ const c=buf[i]|(buf[i+1]<<8); if((c>=0xAC00&&c<=0xD7A3)||(c>=0x30&&c<=0x39)||c===0x20) s+=String.fromCharCode(c); else if(s.length&&!s.endsWith(' ')) s+=' '; }
+      return s.replace(/\s+/g,' ').slice(0,20000);
+    }
+    if(type.startsWith('image/')){
+      if(!document.getElementById('ocr').checked) return '';
+      const url=URL.createObjectURL(file); const t=await ocrImage(url); URL.revokeObjectURL(url); return t.slice(0,20000);
+    }
+  }catch(e){ console.warn('추출 실패',file.name,e); }
+  return '';
+}
+
+/* ===================== 구글 드라이브 ===================== */
+const DRIVE={clientId:'',token:null,exp:0,root:null,tc:null,folders:{}};
+try{ DRIVE.clientId=localStorage.getItem('docbox_client_id')||''; DRIVE.root=localStorage.getItem('docbox_drive_root')||null; }catch(e){}
+const driveOn=()=>!!(DRIVE.token&&Date.now()<DRIVE.exp);
+const safeName=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'_').trim();
+function driveSignIn(interactive){
+  return new Promise((res,rej)=>{
+    if(!window.google?.accounts?.oauth2){ rej(new Error('구글 로그인 스크립트를 불러오지 못했습니다')); return; }
+    DRIVE.tc=google.accounts.oauth2.initTokenClient({client_id:DRIVE.clientId,scope:'https://www.googleapis.com/auth/drive.file',
+      callback:r=>{ if(r.error){ rej(new Error(r.error)); return; } DRIVE.token=r.access_token; DRIVE.exp=Date.now()+((r.expires_in||3600)-90)*1000; res(); },
+      error_callback:e=>rej(new Error(e.type||'로그인 취소'))});
+    DRIVE.tc.requestAccessToken({prompt:interactive?'consent':''});
+  });
+}
+async function gfetch(url,opts={},retry=true){
+  if(!driveOn()) await driveSignIn(false);
+  const r=await fetch(url,{...opts,headers:{Authorization:'Bearer '+DRIVE.token,...(opts.headers||{})}});
+  if(r.status===401&&retry){ DRIVE.token=null; await driveSignIn(true); return gfetch(url,opts,false); }
+  if(!r.ok){ throw new Error('드라이브 오류 '+r.status+': '+(await r.text()).slice(0,200)); }
+  return r;
+}
+const API='https://www.googleapis.com/drive/v3/files';
+async function findFolder(name,parent){
+  const q=`name='${name.replace(/'/g,"\\'")}' and mimeType='application/vnd.google-apps.folder' and '${parent}' in parents and trashed=false`;
+  const j=await (await gfetch(`${API}?q=${encodeURIComponent(q)}&fields=files(id,name)&pageSize=5`)).json();
+  return j.files?.[0]?.id||null;
+}
+async function ensureFolder(name,parent){
+  const key=parent+'/'+name; if(DRIVE.folders[key]) return DRIVE.folders[key];
+  let id=await findFolder(name,parent);
+  if(!id){ const r=await gfetch(API+'?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',parents:[parent],appProperties:{docbox:'folder'}})}); id=(await r.json()).id; }
+  DRIVE.folders[key]=id; return id;
+}
+async function driveRoot(){
+  if(DRIVE.root){ try{ await gfetch(`${API}/${DRIVE.root}?fields=id,trashed`); return DRIVE.root; }catch(e){ DRIVE.root=null; } }
+  DRIVE.root=await ensureFolder('서류함','root'); try{localStorage.setItem('docbox_drive_root',DRIVE.root)}catch(e){}
+  return DRIVE.root;
+}
+function driveMeta(rec){
+  return {docbox:'1',id:rec.id,cat:rec.category||'',sub:(rec.sub||'').slice(0,60),vendor:(rec.vendor||'').slice(0,60),date:rec.date||'',amount:rec.amount==null?'':String(rec.amount),title:(rec.title||'').slice(0,100)};
+}
+const driveFileName=rec=>safeName(`${rec.date||'날짜미정'}_${rec.vendor||rec.sub||''}_${rec.name}`);
+async function driveTargetFolder(rec){
+  const root=await driveRoot(); const cat=await ensureFolder(safeName(rec.category||'사진·기타'),root);
+  return ensureFolder((rec.date||'').slice(0,7)||'날짜미정',cat);
+}
+async function driveUpload(rec){
+  if(!rec.blob) return;
+  const folder=await driveTargetFolder(rec);
+  const meta={name:driveFileName(rec),parents:[folder],appProperties:driveMeta(rec),description:(rec.memo||'').slice(0,500)};
+  const fd=new FormData(); fd.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'})); fd.append('file',rec.blob);
+  const r=await gfetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',{method:'POST',body:fd});
+  const j=await r.json(); rec.driveId=j.id; rec.driveLink=j.webViewLink;
+}
+async function driveUpdate(rec){
+  if(!rec.driveId) return;
+  const cur=await (await gfetch(`${API}/${rec.driveId}?fields=parents`)).json();
+  const folder=await driveTargetFolder(rec);
+  let url=`${API}/${rec.driveId}?fields=id`; const oldParent=cur.parents?.[0];
+  if(oldParent&&oldParent!==folder) url+=`&addParents=${folder}&removeParents=${oldParent}`;
+  await gfetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:driveFileName(rec),appProperties:driveMeta(rec),description:(rec.memo||'').slice(0,500)})});
+}
+async function driveTrash(rec){ if(rec.driveId) await gfetch(`${API}/${rec.driveId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({trashed:true})}); }
+async function driveFetchBlob(rec){
+  const r=await gfetch(`${API}/${rec.driveId}?alt=media`); const b=await r.blob();
+  rec.blob=new File([b],rec.name,{type:rec.type||b.type}); await put(rec); return rec.blob;
+}
+let indexTimer=null;
+function driveSaveIndexSoon(){ if(!driveOn()) return; clearTimeout(indexTimer); indexTimer=setTimeout(()=>driveSaveIndex().catch(e=>console.warn(e)),1500); }
+async function driveSaveIndex(){
+  const root=await driveRoot();
+  const data=JSON.stringify({v:1,saved:new Date().toISOString(),docs:docs.map(d=>{const o={...d};delete o.blob;return o;})});
+  const q=`name='index.json' and '${root}' in parents and trashed=false`;
+  const j=await (await gfetch(`${API}?q=${encodeURIComponent(q)}&fields=files(id)`)).json();
+  const fd=new FormData();
+  if(j.files?.[0]){ fd.append('metadata',new Blob([JSON.stringify({})],{type:'application/json'})); fd.append('file',new Blob([data],{type:'application/json'}));
+    await gfetch(`https://www.googleapis.com/upload/drive/v3/files/${j.files[0].id}?uploadType=multipart`,{method:'PATCH',body:fd}); }
+  else { fd.append('metadata',new Blob([JSON.stringify({name:'index.json',parents:[root],appProperties:{docbox:'index'}})],{type:'application/json'})); fd.append('file',new Blob([data],{type:'application/json'}));
+    await gfetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:'POST',body:fd}); }
+}
+async function driveLoad(){
+  $('status').textContent='드라이브에서 목록을 읽는 중…';
+  const root=await driveRoot();
+  // index.json
+  let index={}; try{ const q=`name='index.json' and '${root}' in parents and trashed=false`; const j=await (await gfetch(`${API}?q=${encodeURIComponent(q)}&fields=files(id)`)).json();
+    if(j.files?.[0]){ const ix=await (await gfetch(`${API}/${j.files[0].id}?alt=media`)).json(); (ix.docs||[]).forEach(d=>index[d.id]=d); } }catch(e){ console.warn(e); }
+  // 파일 목록
+  let files=[], pageToken='';
+  do{ const q=`appProperties has { key='docbox' and value='1' } and trashed=false`;
+    const j=await (await gfetch(`${API}?q=${encodeURIComponent(q)}&fields=nextPageToken,files(id,name,mimeType,size,appProperties,description,createdTime,webViewLink)&pageSize=200${pageToken?'&pageToken='+pageToken:''}`)).json();
+    files=files.concat(j.files||[]); pageToken=j.nextPageToken||''; }while(pageToken);
+  let added=0, updated=0;
+  for(const f of files){
+    const ap=f.appProperties||{}; const id=ap.id||f.id; const local=docs.find(d=>d.id===id||d.driveId===f.id); const ix=index[id]||{};
+    const origName=f.name.replace(/^[^_]*_[^_]*_/,'')||f.name;
+    const rec=Object.assign({}, ix, local||{}, {
+      id, name:local?.name||ix.name||origName, title:ap.title||ix.title||local?.title||origName.replace(/\.[^.]+$/,''), type:local?.type||ix.type||f.mimeType||'',
+      ext:local?.ext||ix.ext||(origName.split('.').pop()||'').toLowerCase(), size:+f.size||0,
+      category:ap.cat||ix.category||'사진·기타', sub:ap.sub||ix.sub||'', vendor:ap.vendor||ix.vendor||'', date:ap.date||ix.date||f.createdTime.slice(0,10),
+      amount:ap.amount===''||ap.amount==null?(ix.amount??null):+ap.amount, memo:f.description||ix.memo||'', text:ix.text||local?.text||'',
+      addedAt:ix.addedAt||f.createdTime, driveId:f.id, driveLink:f.webViewLink, blob:local?.blob||null });
+    await put(rec); local?updated++:added++;
+  }
+  // 파일 없는 직접입력 항목
+  for(const d of Object.values(index)){ if(!d.driveId && !docs.some(x=>x.id===d.id)){ await put({...d,blob:null}); added++; } }
+  await reload(); $('status').textContent=''; toast(`드라이브에서 ${added}건 추가, ${updated}건 갱신했습니다`);
+}
+function driveUI(on){
+  $('driveBtn').textContent=on?'드라이브 연결됨':'구글 드라이브 연결'; $('driveBtn').classList.toggle('primary',!on);
+  $('driveLoadBtn').hidden=!on; $('driveOpen').hidden=!(on&&DRIVE.root); if(DRIVE.root) $('driveOpen').href='https://drive.google.com/drive/folders/'+DRIVE.root;
+}
+async function driveConnect(interactive){
+  if(!DRIVE.clientId){ $('drivePanel').hidden=false; $('clientId').value=''; return; }
+  if(location.protocol==='file:'){ $('drivePanel').hidden=false; $('driveInfo').textContent='file:// 주소에서는 구글 로그인이 되지 않습니다. Vercel 등에 올린 https 주소나 http://localhost 로 여세요.'; return; }
+  try{ await driveSignIn(interactive); await driveRoot(); driveUI(true); try{localStorage.setItem('docbox_drive_auto','1')}catch(e){}
+    if(interactive) toast('구글 드라이브에 연결했습니다'); }
+  catch(e){ if(interactive) toast('연결 실패: '+e.message); driveUI(false); }
+}
+$('driveBtn').onclick=()=>{ if(driveOn()){ $('drivePanel').hidden=!$('drivePanel').hidden; $('clientId').value=DRIVE.clientId; } else driveConnect(true); };
+$('clientSave').onclick=()=>{ const v=$('clientId').value.trim(); if(!v.endsWith('.apps.googleusercontent.com')){ toast('클라이언트 ID 형식이 아닙니다'); return; } DRIVE.clientId=v; try{localStorage.setItem('docbox_client_id',v)}catch(e){} $('drivePanel').hidden=true; driveConnect(true); };
+$('clientCancel').onclick=()=>$('drivePanel').hidden=true;
+$('driveLoadBtn').onclick=()=>driveLoad().catch(e=>toast('불러오기 실패: '+e.message));
+
+/* ===================== 입력 처리 ===================== */
+let dirHandle=null;
+
+async function addFiles(files){
+  const list=[...files]; if(!list.length) return;
+  const q=$('queue'); q.innerHTML='';
+  const rows=list.map(f=>{const d=document.createElement('div');d.innerHTML=`<span style="min-width:180px;max-width:260px;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</span><div class="bar"><i></i></div><span class="st">대기</span>`;q.appendChild(d);return d;});
+  for(let i=0;i<list.length;i++){
+    const f=list[i], row=rows[i], bar=row.querySelector('i'), st=row.querySelector('.st');
+    st.textContent='읽는 중'; bar.style.width='15%';
+    const text=await extractText(f,p=>bar.style.width=(15+p*60)+'%');
+    bar.style.width='80%'; st.textContent='분류 중';
+    const cl=classify(text,f.name);
+    const rec={
+      id:Date.now()+'-'+Math.random().toString(36).slice(2,8),
+      name:f.name, title:f.name.replace(/\.[^.]+$/,''), type:f.type||'', ext:(f.name.split('.').pop()||'').toLowerCase(), size:f.size,
+      category:cl.category, sub:cl.sub, vendor:extractVendor(text,f.name,cl.category),
+      date:extractDate(text,f.name)||new Date().toISOString().slice(0,10), amount:extractAmount(text),
+      memo:'', text, addedAt:new Date().toISOString(), blob:f
+    };
+    if(!rec.vendor && rec.sub) rec.vendor=rec.sub;
+    if(driveOn()){ st.textContent='드라이브 업로드'; bar.style.width='90%'; try{ await driveUpload(rec); }catch(e){ console.warn(e); st.textContent='드라이브 업로드 실패(로컬에만 저장)'; } }
+    await put(rec);
+    if(dirHandle) await saveToFolder(rec).catch(e=>console.warn(e));
+    bar.style.width='100%'; st.textContent=`→ ${rec.category}${rec.sub?' · '+rec.sub:''}${rec.driveId?' ☁':''}`;
+  }
+  await reload(); driveSaveIndexSoon(); toast(`${list.length}건 저장했습니다`);
+  setTimeout(()=>{q.innerHTML=''},6000);
+}
+async function saveToFolder(rec){
+  const cat=await dirHandle.getDirectoryHandle(rec.category.replace(/[\\/:*?"<>|]/g,'_'),{create:true});
+  const ym=await cat.getDirectoryHandle((rec.date||'미정').slice(0,7),{create:true});
+  const name=`${rec.date||''}_${rec.vendor||rec.sub||''}_${rec.name}`.replace(/[\\/:*?"<>|]/g,'_');
+  const fh=await ym.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(rec.blob); await w.close();
+}
+
+/* ===================== 화면 ===================== */
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const catColor=id=>(CATS.find(c=>c.id===id)||{}).c||'#6b7280';
+let filter={cat:'',sub:'',vendor:'',year:'',month:'',q:'',view:'list',sort:'date',dir:-1};
+
+async function reload(){ docs=await getAll(); docs.sort((a,b)=>(b.date||'').localeCompare(a.date||'')); fillSelects(); renderTiles(); render(); }
+function fillSelects(){
+  const opts=(sel,vals,keep)=>{const cur=sel.value;sel.innerHTML='<option value="">전체</option>'+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(keep&&vals.includes(cur))sel.value=cur;};
+  const inCat=filter.cat?docs.filter(d=>d.category===filter.cat):docs;
+  opts($('fCat'),CATS.map(c=>c.id),true);
+  opts($('fSub'),[...new Set(inCat.map(d=>d.sub).filter(Boolean))].sort(),true);
+  opts($('fVendor'),[...new Set(inCat.map(d=>d.vendor).filter(Boolean))].sort(),true);
+  opts($('fYear'),[...new Set(docs.map(d=>(d.date||'').slice(0,4)).filter(Boolean))].sort().reverse(),true);
+  opts($('fMonth'),Array.from({length:12},(_,i)=>String(i+1).padStart(2,'0')),true);
+  const catopt=CATS.map(c=>`<option>${c.id}</option>`).join('');
+  $('mCat').innerHTML=catopt; $('dCat').innerHTML=catopt;
+  $('subList').innerHTML=[...new Set(docs.map(d=>d.sub).filter(Boolean))].map(v=>`<option value="${esc(v)}">`).join('');
+  $('vendorList').innerHTML=[...new Set(docs.map(d=>d.vendor).filter(Boolean))].map(v=>`<option value="${esc(v)}">`).join('');
+}
+function renderTiles(){
+  const t=$('tiles'); t.innerHTML='';
+  const all=document.createElement('div'); all.className='tile'+(filter.cat?'':' active'); all.innerHTML=`<span class="n">${docs.length}</span><span class="l">전체 자료</span><span class="s">${fmt(docs.reduce((s,d)=>s+(+d.amount||0),0))}원</span>`; all.onclick=()=>{filter.cat='';filter.sub='';filter.vendor='';syncFilters();}; t.appendChild(all);
+  for(const c of CATS){
+    const ds=docs.filter(d=>d.category===c.id); if(!ds.length) continue;
+    const sum=ds.reduce((s,d)=>s+(+d.amount||0),0);
+    const subs=[...new Set(ds.map(d=>d.sub||d.vendor).filter(Boolean))].length;
+    const el=document.createElement('div'); el.className='tile'+(filter.cat===c.id?' active':''); el.style.setProperty('--c',c.c);
+    el.innerHTML=`<span class="n">${ds.length}</span><span class="l">${c.id}</span><span class="s">${sum?fmt(sum)+'원':''}${subs?(sum?' · ':'')+subs+'곳':''}</span>`;
+    el.onclick=()=>{filter.cat=filter.cat===c.id?'':c.id;filter.sub='';filter.vendor='';syncFilters();};
+    t.appendChild(el);
+  }
+}
+function syncFilters(){ $('fCat').value=filter.cat; fillSelects(); $('fSub').value=filter.sub; $('fVendor').value=filter.vendor; renderTiles(); render(); }
+function filtered(){
+  const q=filter.q.trim().toLowerCase();
+  return docs.filter(d=>(!filter.cat||d.category===filter.cat)&&(!filter.sub||d.sub===filter.sub)&&(!filter.vendor||d.vendor===filter.vendor)
+    &&(!filter.year||(d.date||'').startsWith(filter.year))&&(!filter.month||(d.date||'').slice(5,7)===filter.month)
+    &&(!q||[d.title,d.name,d.vendor,d.sub,d.memo,d.category,String(d.amount||''),d.text].join(' ').toLowerCase().includes(q)));
+}
+function rowHTML(d){
+  return `<tr class="r" data-id="${d.id}"><td>${d.date||''}</td><td><span class="chip" style="--c:${catColor(d.category)}">${esc(d.category)}</span></td><td>${esc(d.sub||'')}</td><td>${esc(d.vendor||'')}</td><td class="name" title="${esc(d.name)}">${esc(d.title||d.name)}</td><td class="num">${d.amount!=null?fmt(d.amount):''}</td><td style="color:var(--muted);font-family:var(--mono);font-size:12px">${d.ext||'입력'}${d.driveId?' ☁':''}</td></tr>`;
+}
+function tableHTML(rows){
+  const s=(k,l)=>`<th data-k="${k}">${l}${filter.sort===k?(filter.dir>0?' ▲':' ▼'):''}</th>`;
+  return `<div class="tablewrap"><table><thead><tr>${s('date','날짜')}${s('category','종류')}${s('sub','세부')}${s('vendor','거래처')}${s('title','제목')}${s('amount','금액')}<th>형식</th></tr></thead><tbody>${rows.map(rowHTML).join('')}</tbody></table></div>`;
+}
+function render(){
+  let rows=filtered();
+  const k=filter.sort; rows=[...rows].sort((a,b)=>{const x=a[k]??'',y=b[k]??'';return (k==='amount'?(+x||0)-(+y||0):String(x).localeCompare(String(y),'ko'))*filter.dir;});
+  $('count').textContent=`${rows.length}건`; const sum=rows.reduce((s,d)=>s+(+d.amount||0),0); $('sum').textContent=sum?`금액 합계 ${fmt(sum)}원`:'';
+  const L=$('list');
+  if(!rows.length){ L.innerHTML=`<div class="empty">${docs.length?'조건에 맞는 자료가 없습니다.':'아직 자료가 없습니다. 위에서 파일을 넣거나 사진을 찍어 보세요.'}</div>`; return; }
+  if(filter.view==='list'){ L.innerHTML=tableHTML(rows); }
+  else{
+    const key=filter.view==='vendor'?d=>d.vendor||'(거래처 미상)':filter.view==='month'?d=>(d.date||'').slice(0,7)||'(날짜 미상)':d=>d.sub||'(세부 미상)';
+    const g={}; rows.forEach(d=>{(g[key(d)]=g[key(d)]||[]).push(d)});
+    const keys=Object.keys(g).sort((a,b)=>filter.view==='month'?b.localeCompare(a):a.localeCompare(b,'ko'));
+    L.innerHTML=keys.map(k=>{const ds=g[k];const s=ds.reduce((a,d)=>a+(+d.amount||0),0);return `<details class="group" open><summary>${esc(k)} <span class="hint">${ds.length}건${s?' · '+fmt(s)+'원':''}</span></summary>${tableHTML(ds)}</details>`}).join('');
+  }
+  L.querySelectorAll('tr.r').forEach(tr=>tr.onclick=()=>openDoc(tr.dataset.id));
+  L.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(filter.sort===k)filter.dir*=-1;else{filter.sort=k;filter.dir=k==='date'?-1:1;}render();});
+}
+
+/* ===================== 상세 ===================== */
+let cur=null, curURL=null;
+async function openDoc(id){
+  cur=docs.find(d=>d.id===id); if(!cur) return;
+  const pv=$('preview'); pv.innerHTML=''; if(curURL){URL.revokeObjectURL(curURL);curURL=null;}
+  $('drawer').classList.add('open');
+  if(!cur.blob && cur.driveId){
+    pv.innerHTML='<div class="hint">드라이브에서 가져오는 중…</div>';
+    if(driveOn()){ try{ await driveFetchBlob(cur); }catch(e){ pv.innerHTML=`<div class="hint">가져오지 못했습니다: ${esc(e.message)}</div>`; } }
+    else pv.innerHTML='<div class="hint">원본은 구글 드라이브에 있습니다. 상단에서 드라이브를 연결하면 여기서 바로 볼 수 있습니다.</div>';
+  }
+  if(cur.blob){
+    curURL=URL.createObjectURL(cur.blob);
+    if((cur.type||'').startsWith('image/')) pv.innerHTML=`<img src="${curURL}" alt="">`;
+    else if(cur.ext==='pdf') pv.innerHTML=`<iframe src="${curURL}"></iframe>`;
+    else pv.innerHTML=`<pre>${esc(cur.text||'미리보기를 지원하지 않는 형식입니다. 원본 내려받기로 열어 보세요.')}</pre>`;
+  } else if(!cur.driveId) pv.innerHTML=`<pre>${esc(cur.memo||'직접 입력한 자료')}</pre>`;
+  $('dName').textContent=cur.name; $('dTitle').value=cur.title||''; $('dCat').value=cur.category; $('dSub').value=cur.sub||''; $('dVendor').value=cur.vendor||'';
+  $('dDate').value=cur.date||''; $('dAmount').value=cur.amount??''; $('dMemo').value=cur.memo||''; $('dText').textContent=cur.text||'(읽어낸 글자 없음)';
+  $('dInfo').innerHTML=`${cur.ext||'입력'} · ${cur.size?(cur.size/1024).toFixed(0)+'KB · ':''}저장 ${(cur.addedAt||'').slice(0,16).replace('T',' ')}${cur.driveLink?` · <a href="${cur.driveLink}" target="_blank" rel="noopener">드라이브에서 열기</a>`:''}`;
+  $('dConfirm').classList.remove('show');
+}
+function closeDoc(){ $('drawer').classList.remove('open'); if(curURL){URL.revokeObjectURL(curURL);curURL=null;} cur=null; }
+$('closeD').onclick=closeDoc; $('drawer').onclick=e=>{if(e.target===$('drawer'))closeDoc();};
+$('dSave').onclick=async()=>{ if(!cur)return; Object.assign(cur,{title:$('dTitle').value,category:$('dCat').value,sub:$('dSub').value.trim(),vendor:$('dVendor').value.trim(),date:$('dDate').value,amount:$('dAmount').value===''?null:+$('dAmount').value,memo:$('dMemo').value}); await put(cur);
+  if(driveOn()){ try{ if(cur.driveId) await driveUpdate(cur); else if(cur.blob) await driveUpload(cur), await put(cur); }catch(e){ toast('드라이브 반영 실패: '+e.message); } }
+  await reload(); driveSaveIndexSoon(); toast('저장했습니다'); closeDoc(); };
+$('dReclass').onclick=()=>{ if(!cur)return; const cl=classify(cur.text,cur.name); $('dCat').value=cl.category; $('dSub').value=cl.sub; $('dVendor').value=extractVendor(cur.text,cur.name,cl.category)||cur.vendor||''; $('dDate').value=extractDate(cur.text,cur.name)||cur.date; const a=extractAmount(cur.text); if(a!=null)$('dAmount').value=a; toast('다시 분류했습니다. 확인 후 저장하세요'); };
+$('dDown').onclick=async()=>{ if(!cur)return; if(!cur.blob&&cur.driveId&&driveOn()){ try{ await driveFetchBlob(cur); curURL=URL.createObjectURL(cur.blob); }catch(e){ toast('가져오기 실패'); return; } } if(!cur.blob){ if(cur.driveLink) window.open(cur.driveLink,'_blank'); return; } const a=document.createElement('a'); a.href=curURL||URL.createObjectURL(cur.blob); a.download=cur.name; a.click(); };
+$('dDel').onclick=()=>$('dConfirm').classList.add('show'); $('dDelNo').onclick=()=>$('dConfirm').classList.remove('show');
+$('dDelYes').onclick=async()=>{ if(!cur)return; if(driveOn()&&cur.driveId){ try{ await driveTrash(cur); }catch(e){ toast('드라이브 휴지통 이동 실패: '+e.message); } } await del(cur.id); await reload(); driveSaveIndexSoon(); toast('삭제했습니다'); closeDoc(); };
+
+/* ===================== 입력 이벤트 ===================== */
+const drop=$('drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
+document.addEventListener('paste',e=>{const fs=[...(e.clipboardData?.files||[])];if(fs.length)addFiles(fs);});
+$('pickBtn').onclick=()=>$('pick').click(); $('pick').onchange=e=>{addFiles(e.target.files);e.target.value='';};
+$('camPick').onchange=e=>{addFiles(e.target.files);e.target.value='';};
+let stream=null;
+$('camBtn').onclick=async()=>{
+  if(!navigator.mediaDevices?.getUserMedia||/Mobi|Android|iPhone|iPad/.test(navigator.userAgent)){ $('camPick').click(); return; }
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920}}}); $('video').srcObject=stream; $('cam').classList.add('open'); }
+  catch(e){ $('camPick').click(); }
+};
+function stopCam(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} $('cam').classList.remove('open'); }
+$('camClose').onclick=stopCam;
+$('shot').onclick=()=>{ const v=$('video'); const c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0);
+  c.toBlob(b=>{ const name=`촬영_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.jpg`; addFiles([new File([b],name,{type:'image/jpeg'})]); stopCam(); },'image/jpeg',0.92); };
+$('manualBtn').onclick=()=>{$('manual').hidden=!$('manual').hidden;$('mDate').value=new Date().toISOString().slice(0,10);};
+$('mCancel').onclick=()=>$('manual').hidden=true;
+$('mSave').onclick=async()=>{
+  const title=$('mTitle').value.trim(); if(!title){toast('제목을 입력해 주세요');return;}
+  const rec={id:Date.now()+'-'+Math.random().toString(36).slice(2,8),name:title,title,type:'',ext:'',size:0,category:$('mCat').value,sub:$('mSub').value.trim(),vendor:$('mVendor').value.trim(),date:$('mDate').value,amount:$('mAmount').value===''?null:+$('mAmount').value,memo:$('mMemo').value,text:$('mMemo').value,addedAt:new Date().toISOString(),blob:null};
+  if(!rec.sub&&!rec.vendor){const cl=classify(title+' '+rec.memo,'');if(cl.category!=='사진·기타'&&!$('mCat').value)rec.category=cl.category;rec.sub=cl.sub;}
+  await put(rec); ['mTitle','mVendor','mAmount','mSub','mMemo'].forEach(i=>$(i).value=''); $('manual').hidden=true; await reload(); driveSaveIndexSoon(); toast('저장했습니다');
+};
+$('q').oninput=e=>{filter.q=e.target.value;render();}; $('clearq').onclick=()=>{$('q').value='';filter.q='';render();};
+$('fCat').onchange=e=>{filter.cat=e.target.value;filter.sub='';filter.vendor='';syncFilters();};
+$('fSub').onchange=e=>{filter.sub=e.target.value;render();}; $('fVendor').onchange=e=>{filter.vendor=e.target.value;render();};
+$('fYear').onchange=e=>{filter.year=e.target.value;render();}; $('fMonth').onchange=e=>{filter.month=e.target.value;render();}; $('fView').onchange=e=>{filter.view=e.target.value;render();};
+
+/* ===================== 백업 ===================== */
+const b64=(blob)=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob)});
+$('exportBtn').onclick=async()=>{
+  $('status').textContent='백업 파일을 만드는 중…';
+  const out=[]; for(const d of docs){ const o={...d}; o.blob=d.blob?await b64(d.blob):null; out.push(o); }
+  const blob=new Blob([JSON.stringify({v:1,exported:new Date().toISOString(),docs:out})],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`서류함_백업_${new Date().toISOString().slice(0,10)}.json`; a.click();
+  $('status').textContent=`백업 ${out.length}건 · ${(blob.size/1048576).toFixed(1)}MB`;
+};
+$('importBtn').onclick=()=>$('importFile').click();
+$('importFile').onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return; e.target.value='';
+  try{ const j=JSON.parse(await f.text()); let n=0;
+    for(const d of j.docs||[]){ if(docs.some(x=>x.id===d.id)) continue; if(d.blob){const r=await fetch(d.blob);d.blob=new File([await r.blob()],d.name,{type:d.type});} await put(d); n++; }
+    await reload(); toast(`${n}건 불러왔습니다 (중복 제외)`);
+  }catch(err){ toast('백업 파일을 읽지 못했습니다'); }
+};
+$('folderBtn').onclick=async()=>{
+  if(!window.showDirectoryPicker){ toast('이 브라우저는 폴더 저장을 지원하지 않습니다 (Chrome/Edge 사용)'); return; }
+  try{ dirHandle=await window.showDirectoryPicker({mode:'readwrite'}); $('folderBtn').textContent='폴더 저장 켜짐: '+dirHandle.name; toast('앞으로 넣는 파일은 종류/월별 폴더에도 함께 저장됩니다'); }catch(e){}
+};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDoc();stopCam();}});
+
+/* ===================== 시작 ===================== */
+(async()=>{
+  try{ await openDB(); await reload(); if(navigator.storage?.persist) navigator.storage.persist(); }
+  catch(e){ $('status').textContent='이 브라우저에서는 저장소를 열 수 없습니다. 시크릿 창이 아닌 일반 창에서 열어 주세요.'; }
+  // 이전에 연결한 적 있으면 조용히 재연결 시도
+  let auto=false; try{ auto=localStorage.getItem('docbox_drive_auto')==='1'; }catch(e){}
+  if(auto && DRIVE.clientId && location.protocol!=='file:'){ const wait=()=>window.google?.accounts?.oauth2?driveConnect(false):setTimeout(wait,300); wait(); }
+})();
+</script>
+</body>
+</html>
