@@ -154,7 +154,7 @@ tr.r:hover td{background:var(--soft);cursor:pointer}
       <label class="f">거래처 / 발행처 <input type="text" id="mVendor"></label>
       <label class="f">날짜 <input type="date" id="mDate"></label>
       <label class="f">금액(원) <input type="number" id="mAmount"></label>
-      <label class="f">세부(카드사·세목 등) <input type="text" id="mSub"></label>
+      <label class="f">세부(보험사·카드사·세목 등) <div class="row" style="flex-wrap:nowrap"><select id="mSubSel" style="flex:1;min-width:0"></select><input type="text" id="mSub" placeholder="직접 입력" hidden style="flex:1"></div></label>
     </div>
     <label class="f" style="margin-top:8px">메모 / 내용 <textarea id="mMemo" rows="3"></textarea></label>
     <div class="row top"><button class="primary" id="mSave">저장</button><button id="mCancel">취소</button></div>
@@ -187,7 +187,7 @@ tr.r:hover td{background:var(--soft);cursor:pointer}
       <div class="row"><strong id="dName" style="min-width:0;overflow:hidden;text-overflow:ellipsis"></strong><button id="closeD">닫기</button></div>
       <label class="f">제목 <input type="text" id="dTitle"></label>
       <label class="f">종류 <select id="dCat"></select></label>
-      <label class="f">세부(카드사·세목 등) <input type="text" id="dSub" list="subList"></label>
+      <label class="f">세부(보험사·카드사·세목 등) <div class="row" style="flex-wrap:nowrap"><select id="dSubSel" style="flex:1;min-width:0"></select><input type="text" id="dSub" placeholder="직접 입력" hidden style="flex:1"></div></label>
       <label class="f">거래처 / 발행처 <input type="text" id="dVendor" list="vendorList"></label>
       <div class="grid2">
         <label class="f">날짜 <input type="date" id="dDate"></label>
@@ -245,7 +245,7 @@ const CATS = [
  {id:'사진·기타', c:'#6b7280', kw:[]}
 ];
 const CARDS = ['신한','삼성','현대','KB국민','국민','롯데','우리','하나','BC','비씨','NH농협','농협','씨티','카카오','토스','IBK기업','기업','새마을','수협','신협','우체국'];
-const INSURERS = [['삼성생명','삼성생명'],['삼성화재','삼성화재'],['한화생명','한화생명'],['한화손해','한화손해보험'],['한화손보','한화손해보험'],['교보생명','교보생명'],['교보라이프','교보라이프플래닛'],['신한라이프','신한라이프'],['신한생명','신한라이프'],['KB손해','KB손해보험'],['KB손보','KB손해보험'],['KB라이프','KB라이프'],['KB생명','KB라이프'],['현대해상','현대해상'],['DB손해','DB손해보험'],['DB손보','DB손해보험'],['DB생명','DB생명'],['메리츠화재','메리츠화재'],['메리츠','메리츠화재'],['롯데손해','롯데손해보험'],['롯데손보','롯데손해보험'],['흥국생명','흥국생명'],['흥국화재','흥국화재'],['NH농협생명','NH농협생명'],['농협생명','NH농협생명'],['NH농협손해','NH농협손해보험'],['농협손해','NH농협손해보험'],['미래에셋생명','미래에셋생명'],['동양생명','동양생명'],['동양','동양생명'],['ABL생명','ABL생명'],['AIA생명','AIA생명'],['라이나','라이나생명'],['푸본현대','푸본현대생명'],['처브','처브라이프'],['카디프','BNP파리바카디프'],['MG손해','MG손해보험'],['하나손해','하나손해보험'],['하나생명','하나생명'],['악사','AXA손해보험'],['AXA','AXA손해보험'],['iM라이프','iM라이프'],['DGB생명','iM라이프'],['KDB생명','KDB생명'],['IBK연금','IBK연금보험'],['우체국보험','우체국보험'],['새마을금고공제','새마을금고공제'],['수협보험','수협보험'],['캐롯','캐롯손해보험'],['카카오페이손해','카카오페이손해보험'],['국민건강보험','국민건강보험공단'],['건강보험공단','국민건강보험공단'],['국민연금','국민연금공단'],['근로복지공단','근로복지공단'],['고용보험','고용보험']];
+const INSURERS = [['삼성생명','삼성생명'],['삼성화재','삼성화재'],['한화생명','한화생명'],['한화손해','한화손해보험'],['한화손보','한화손해보험'],['교보생명','교보생명'],['교보라이프','교보라이프플래닛'],['신한라이프','신한라이프'],['신한생명','신한라이프'],['KB손해','KB손해보험'],['KB손보','KB손해보험'],['KB라이프','KB라이프'],['KB생명','KB라이프'],['현대해상','현대해상'],['DB손해','DB손해보험'],['DB손보','DB손해보험'],['DB생명','DB생명'],['메리츠화재','메리츠화재'],['메리츠','메리츠화재'],['롯데손해','롯데손해보험'],['롯데손보','롯데손해보험'],['흥국생명','흥국생명'],['흥국화재','흥국화재'],['NH농협생명','NH농협생명'],['농협생명','NH농협생명'],['NH농협손해','NH농협손해보험'],['농협손해','NH농협손해보험'],['미래에셋생명','미래에셋생명'],['동양생명','동양생명'],['동양','동양생명'],['ABL생명','ABL생명'],['AIA생명','AIA생명'],['라이나','라이나생명'],['푸본현대','푸본현대생명'],['처브','처브라이프'],['카디프','BNP파리바카디프생명'],['MG손해','MG손해보험'],['하나손해','하나손해보험'],['하나생명','하나생명'],['악사','AXA손해보험'],['AXA','AXA손해보험'],['iM라이프','iM라이프'],['DGB생명','iM라이프'],['KDB생명','KDB생명'],['IBK연금','IBK연금보험'],['우체국보험','우체국보험'],['새마을금고공제','새마을금고공제'],['수협보험','수협보험'],['캐롯','캐롯손해보험'],['카카오페이손해','카카오페이손해보험'],['국민건강보험','국민건강보험공단'],['건강보험공단','국민건강보험공단'],['국민연금','국민연금공단'],['근로복지공단','근로복지공단'],['고용보험','고용보험']];
 const TAXES = [['부가가치세','부가가치세'],['부가세','부가가치세'],['종합소득세','종합소득세'],['원천징수','원천세'],['원천세','원천세'],['지방소득세','지방세'],['지방세','지방세'],['재산세','재산세'],['자동차세','자동차세'],['면허세','면허세'],['사업소득','사업소득'],['세금계산서','세금계산서'],['계산서','계산서']];
 
 function classify(text, filename){
@@ -544,6 +544,34 @@ async function saveToFolder(rec){
   const fh=await ym.getFileHandle(name,{create:true}); const w=await fh.createWritable(); await w.write(rec.blob); await w.close();
 }
 
+/* ===================== 세부 선택 목록 ===================== */
+const SUBOPTS={
+ '보험':[
+  ['생명보험',['삼성생명','한화생명','교보생명','신한라이프','NH농협생명','미래에셋생명','동양생명','흥국생명','KB라이프','iM라이프','KDB생명','DB생명','ABL생명','AIA생명','메트라이프생명','라이나생명','푸본현대생명','처브라이프','BNP파리바카디프생명','하나생명','IBK연금보험','교보라이프플래닛']],
+  ['손해보험',['삼성화재','현대해상','DB손해보험','KB손해보험','메리츠화재','한화손해보험','롯데손해보험','흥국화재','NH농협손해보험','MG손해보험','하나손해보험','AXA손해보험','캐롯손해보험','카카오페이손해보험','신한EZ손해보험','에이스손해보험','AIG손해보험','라이나손해보험','서울보증보험','코리안리']],
+  ['공제·공적보험',['국민건강보험공단','국민연금공단','근로복지공단','우체국보험','새마을금고공제','신협공제','수협보험','농협공제','의료배상공제조합','화재보험협회']]
+ ],
+ '카드명세서':[['카드사',['신한카드','삼성카드','현대카드','KB국민카드','롯데카드','우리카드','하나카드','BC카드','NH농협카드','씨티카드','카카오뱅크카드','토스카드','IBK기업은행카드','새마을금고카드','수협카드','신협카드','우체국카드']]],
+ '영수증':[['카드사',['신한카드','삼성카드','현대카드','KB국민카드','롯데카드','우리카드','하나카드','BC카드','NH농협카드','현금영수증','현금']]],
+ '세금계산서':[['세목',['부가가치세','종합소득세','원천세','지방세','사업소득','재산세','자동차세','면허세','세금계산서','계산서']]],
+ '은행·금융':[['은행',['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','부산은행','경남은행','대구은행','카카오뱅크','토스뱅크','케이뱅크','새마을금고','수협','신협','우체국','SC제일은행','씨티은행']]]
+};
+function fillSub(p, category, value){
+  const sel=$(p+'SubSel'), inp=$(p+'Sub'); const groups=SUBOPTS[category]||[];
+  const listed=new Set(groups.flatMap(g=>g[1]));
+  const used=[...new Set(docs.filter(d=>d.category===category).map(d=>d.sub).filter(v=>v&&!listed.has(v)))].sort();
+  if(value && !listed.has(value) && !used.includes(value)) used.unshift(value);
+  let html='<option value="">(없음)</option>';
+  for(const [g,items] of groups) html+=`<optgroup label="${esc(g)}">`+items.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')+'</optgroup>';
+  if(used.length) html+='<optgroup label="입력했던 항목">'+used.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')+'</optgroup>';
+  html+='<option value="__custom">직접 입력…</option>';
+  sel.innerHTML=html; sel.value=value||''; inp.hidden=true; inp.value='';
+  sel.onchange=()=>{ inp.hidden=sel.value!=='__custom'; if(!inp.hidden){ inp.value=''; inp.focus(); } };
+}
+const getSub=p=>{ const sel=$(p+'SubSel'); return (sel.value==='__custom'?$(p+'Sub').value:sel.value).trim(); };
+$('dCat').onchange=()=>fillSub('d',$('dCat').value,'');
+$('mCat').onchange=()=>fillSub('m',$('mCat').value,'');
+
 /* ===================== 화면 ===================== */
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const catColor=id=>(CATS.find(c=>c.id===id)||{}).c||'#6b7280';
@@ -624,14 +652,14 @@ async function openDoc(id){
     else if(cur.ext==='pdf') pv.innerHTML=`<iframe src="${curURL}"></iframe>`;
     else pv.innerHTML=`<pre>${esc(cur.text||'미리보기를 지원하지 않는 형식입니다. 원본 내려받기로 열어 보세요.')}</pre>`;
   } else if(!cur.driveId) pv.innerHTML=`<pre>${esc(cur.memo||'직접 입력한 자료')}</pre>`;
-  $('dName').textContent=cur.name; $('dTitle').value=cur.title||''; $('dCat').value=cur.category; $('dSub').value=cur.sub||''; $('dVendor').value=cur.vendor||'';
+  $('dName').textContent=cur.name; $('dTitle').value=cur.title||''; $('dCat').value=cur.category; fillSub('d',cur.category,cur.sub||''); $('dVendor').value=cur.vendor||'';
   $('dDate').value=cur.date||''; $('dAmount').value=cur.amount??''; $('dMemo').value=cur.memo||''; $('dText').textContent=cur.text||'(읽어낸 글자 없음)';
   $('dInfo').innerHTML=`${cur.ext||'입력'} · ${cur.size?(cur.size/1024).toFixed(0)+'KB · ':''}저장 ${(cur.addedAt||'').slice(0,16).replace('T',' ')}${cur.driveLink?` · <a href="${cur.driveLink}" target="_blank" rel="noopener">드라이브에서 열기</a>`:''}`;
   $('dConfirm').classList.remove('show');
 }
 function closeDoc(){ $('drawer').classList.remove('open'); if(curURL){URL.revokeObjectURL(curURL);curURL=null;} cur=null; }
 $('closeD').onclick=closeDoc; $('drawer').onclick=e=>{if(e.target===$('drawer'))closeDoc();};
-$('dSave').onclick=async()=>{ if(!cur)return; Object.assign(cur,{title:$('dTitle').value,category:$('dCat').value,sub:$('dSub').value.trim(),vendor:$('dVendor').value.trim(),date:$('dDate').value,amount:$('dAmount').value===''?null:+$('dAmount').value,memo:$('dMemo').value}); await put(cur);
+$('dSave').onclick=async()=>{ if(!cur)return; Object.assign(cur,{title:$('dTitle').value,category:$('dCat').value,sub:getSub('d'),vendor:$('dVendor').value.trim(),date:$('dDate').value,amount:$('dAmount').value===''?null:+$('dAmount').value,memo:$('dMemo').value}); await put(cur);
   if(driveOn()){ try{ if(cur.driveId) await driveUpdate(cur); else if(cur.blob) await driveUpload(cur), await put(cur); }catch(e){ toast('드라이브 반영 실패: '+e.message); } }
   await reload(); driveSaveIndexSoon(); toast('저장했습니다'); closeDoc(); };
 $('dReclass').onclick=async()=>{ if(!cur)return;
@@ -641,7 +669,7 @@ $('dReclass').onclick=async()=>{ if(!cur)return;
     let extra=''; if(cur.ext==='pdf') extra=await ocrPdfFirstPage(cur.blob); else { const u=URL.createObjectURL(cur.blob); extra=await ocrImage(u); URL.revokeObjectURL(u); }
     if(extra){ cur.text=((cur.text||'')+'\n'+extra).slice(0,20000); $('dText').textContent=cur.text; cl=classify(cur.text,cur.name); }
   }
-  $('dCat').value=cl.category; $('dSub').value=cl.sub; $('dVendor').value=extractVendor(cur.text,cur.name,cl.category)||cur.vendor||''; $('dDate').value=extractDate(cur.text,cur.name)||cur.date; const a=extractAmount(cur.text); if(a!=null)$('dAmount').value=a; toast('다시 분류했습니다. 확인 후 저장하세요'); };
+  $('dCat').value=cl.category; fillSub('d',cl.category,cl.sub); $('dVendor').value=extractVendor(cur.text,cur.name,cl.category)||cur.vendor||''; $('dDate').value=extractDate(cur.text,cur.name)||cur.date; const a=extractAmount(cur.text); if(a!=null)$('dAmount').value=a; toast('다시 분류했습니다. 확인 후 저장하세요'); };
 $('dDown').onclick=async()=>{ if(!cur)return; if(!cur.blob&&cur.driveId&&driveOn()){ try{ await driveFetchBlob(cur); curURL=URL.createObjectURL(cur.blob); }catch(e){ toast('가져오기 실패'); return; } } if(!cur.blob){ if(cur.driveLink) window.open(cur.driveLink,'_blank'); return; } const a=document.createElement('a'); a.href=curURL||URL.createObjectURL(cur.blob); a.download=cur.name; a.click(); };
 $('dDel').onclick=()=>$('dConfirm').classList.add('show'); $('dDelNo').onclick=()=>$('dConfirm').classList.remove('show');
 $('dDelYes').onclick=async()=>{ if(!cur)return; if(driveOn()&&cur.driveId){ try{ await driveTrash(cur); }catch(e){ toast('드라이브 휴지통 이동 실패: '+e.message); } } await del(cur.id); await reload(); driveSaveIndexSoon(); toast('삭제했습니다'); closeDoc(); };
@@ -664,13 +692,13 @@ function stopCam(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=nu
 $('camClose').onclick=stopCam;
 $('shot').onclick=()=>{ const v=$('video'); const c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0);
   c.toBlob(b=>{ const name=`촬영_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.jpg`; addFiles([new File([b],name,{type:'image/jpeg'})]); stopCam(); },'image/jpeg',0.92); };
-$('manualBtn').onclick=()=>{$('manual').hidden=!$('manual').hidden;$('mDate').value=new Date().toISOString().slice(0,10);};
+$('manualBtn').onclick=()=>{$('manual').hidden=!$('manual').hidden;$('mDate').value=new Date().toISOString().slice(0,10);fillSub('m',$('mCat').value,'');};
 $('mCancel').onclick=()=>$('manual').hidden=true;
 $('mSave').onclick=async()=>{
   const title=$('mTitle').value.trim(); if(!title){toast('제목을 입력해 주세요');return;}
-  const rec={id:Date.now()+'-'+Math.random().toString(36).slice(2,8),name:title,title,type:'',ext:'',size:0,category:$('mCat').value,sub:$('mSub').value.trim(),vendor:$('mVendor').value.trim(),date:$('mDate').value,amount:$('mAmount').value===''?null:+$('mAmount').value,memo:$('mMemo').value,text:$('mMemo').value,addedAt:new Date().toISOString(),blob:null};
+  const rec={id:Date.now()+'-'+Math.random().toString(36).slice(2,8),name:title,title,type:'',ext:'',size:0,category:$('mCat').value,sub:getSub('m'),vendor:$('mVendor').value.trim(),date:$('mDate').value,amount:$('mAmount').value===''?null:+$('mAmount').value,memo:$('mMemo').value,text:$('mMemo').value,addedAt:new Date().toISOString(),blob:null};
   if(!rec.sub&&!rec.vendor){const cl=classify(title+' '+rec.memo,'');if(cl.category!=='사진·기타'&&!$('mCat').value)rec.category=cl.category;rec.sub=cl.sub;}
-  await put(rec); ['mTitle','mVendor','mAmount','mSub','mMemo'].forEach(i=>$(i).value=''); $('manual').hidden=true; await reload(); driveSaveIndexSoon(); toast('저장했습니다');
+  await put(rec); ['mTitle','mVendor','mAmount','mSub','mMemo'].forEach(i=>$(i).value=''); $('mSubSel').value=''; $('manual').hidden=true; await reload(); driveSaveIndexSoon(); toast('저장했습니다');
 };
 $('q').oninput=e=>{filter.q=e.target.value;render();}; $('clearq').onclick=()=>{$('q').value='';filter.q='';render();};
 $('fCat').onchange=e=>{filter.cat=e.target.value;filter.sub='';filter.vendor='';syncFilters();};
