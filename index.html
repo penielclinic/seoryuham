@@ -100,7 +100,7 @@ tr.r:hover td{background:var(--soft);cursor:pointer}
 <div class="wrap">
 <header>
   <div>
-    <h1>서류함 대시보드 <span class="hint" style="font-weight:400">v1.5</span></h1>
+    <h1>서류함 대시보드 <span class="hint" style="font-weight:400">v1.6</span></h1>
     <div class="sub">파일을 넣거나 사진을 찍으면 종류·날짜·거래처를 읽어 자동으로 분류합니다. 구글 드라이브를 연결하면 <b>서류함/종류/회사</b> 폴더에 자동 저장되고 어느 기기에서든 불러올 수 있습니다.</div>
   </div>
   <div class="search">
@@ -152,7 +152,7 @@ tr.r:hover td{background:var(--soft);cursor:pointer}
     <div class="grid2">
       <label class="f">제목 <input type="text" id="mTitle" placeholder="예: 2026-09 신한카드 이용대금"></label>
       <label class="f">종류 <select id="mCat"></select></label>
-      <label class="f">거래처 / 발행처 <input type="text" id="mVendor"></label>
+      <label class="f">거래처 / 발행처 <div class="row" style="flex-wrap:nowrap"><select id="mVendorSel" style="flex:1;min-width:0"></select><input type="text" id="mVendor" placeholder="직접 입력" hidden style="flex:1"></div></label>
       <label class="f">날짜 <input type="date" id="mDate"></label>
       <label class="f">금액(원) <input type="number" id="mAmount"></label>
       <label class="f">세부(보험사·카드사·세목 등) <div class="row" style="flex-wrap:nowrap"><select id="mSubSel" style="flex:1;min-width:0"></select><input type="text" id="mSub" placeholder="직접 입력" hidden style="flex:1"></div></label>
@@ -189,7 +189,7 @@ tr.r:hover td{background:var(--soft);cursor:pointer}
       <label class="f">제목 <input type="text" id="dTitle"></label>
       <label class="f">종류 <select id="dCat"></select></label>
       <label class="f">세부(보험사·카드사·세목 등) <div class="row" style="flex-wrap:nowrap"><select id="dSubSel" style="flex:1;min-width:0"></select><input type="text" id="dSub" placeholder="직접 입력" hidden style="flex:1"></div></label>
-      <label class="f">거래처 / 발행처 <input type="text" id="dVendor" list="vendorList"></label>
+      <label class="f">거래처 / 발행처 <div class="row" style="flex-wrap:nowrap"><select id="dVendorSel" style="flex:1;min-width:0"></select><input type="text" id="dVendor" placeholder="직접 입력" hidden style="flex:1"></div></label>
       <div class="grid2">
         <label class="f">날짜 <input type="date" id="dDate"></label>
         <label class="f">금액(원) <input type="number" id="dAmount"></label>
@@ -250,7 +250,7 @@ const INSURERS = [['삼성생명','삼성생명'],['삼성화재','삼성화재'
 const TAXES = [['부가가치세','부가가치세'],['부가세','부가가치세'],['종합소득세','종합소득세'],['원천징수','원천세'],['원천세','원천세'],['지방소득세','지방세'],['지방세','지방세'],['재산세','재산세'],['자동차세','자동차세'],['면허세','면허세'],['사업소득','사업소득'],['세금계산서','세금계산서'],['계산서','계산서']];
 
 function classify(text, filename){
-  const t = (text||'').replace(/\s+/g,' ');
+  const t = (text||'').replace(/\s+/g,'');   // OCR 띄어쓰기 무시
   const f = (filename||'');
   let best = {id:'사진·기타', score:0};
   for(const c of CATS){
@@ -290,7 +290,7 @@ function extractDate(text, filename){
   return '';
 }
 function extractAmount(text){
-  const t=text||'';
+  const t=(text||'').replace(/[ \t]+/g,'');   // OCR 띄어쓰기 무시
   const keys=['합계금액','총합계','합계','총액','청구금액','결제금액','승인금액','납부할금액','납부금액','결제예정금액','총결제','공급가액'];
   for(const k of keys){
     const re=new RegExp(k+'[^0-9]{0,20}([0-9]{1,3}(?:,[0-9]{3})+|[0-9]{4,})');
@@ -300,15 +300,23 @@ function extractAmount(text){
   if(nums.length) return Math.max(...nums);
   return null;
 }
+const SELF_NAMES=['브니엘산부인과','브니엘','박경원'];
+const isSelf=v=>!v||SELF_NAMES.some(n=>v.replace(/\s/g,'').includes(n));
+const loose=k=>k.split('').map(c=>c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('\\s*');
 function extractVendor(text, filename, cat){
-  const t=text||'';
+  const t=(text||'');
+  const clean=v=>v.replace(/\s/g,'').replace(/^(주식회사|㈜|\(주\))/,'').replace(/(주식회사|㈜|\(주\))$/,'').trim();
+  // 1) 공급자 블록 안의 상호 (거래명세서·세금계산서: 왼쪽이 공급자, 오른쪽이 공급받는자=우리)
+  const sup=/공\s*급\s*자([\s\S]{0,120}?)공\s*급\s*받/.exec(t);
+  if(sup){ const m=new RegExp(loose('상호')+'\\s*[:：)\\]]?\\s*([가-힣A-Za-z0-9()&㈜\\-\\s]{2,24})').exec(sup[1]); if(m){ const v=clean(m[1].split(/\s{2,}|성\s*명/)[0]); if(v.length>=2&&!isSelf(v)) return v; } }
+  // 2) 일반 키워드
   const keys=['상호','공급자','거래처','가맹점명','가맹점','발행처','업체명','회사명','기관명','보험사'];
   for(const k of keys){
-    const re=new RegExp(k+'\\s*[:：)\\]]?\\s*([가-힣A-Za-z0-9()&㈜\\-]{2,20})');
-    const m=re.exec(t); if(m && !['등록번호','사업자'].some(x=>m[1].includes(x))) return m[1].replace(/^(주식회사|㈜)/,'').trim();
+    const re=new RegExp(loose(k)+'\\s*[:：)\\]]?\\s*([가-힣A-Za-z0-9()&㈜\\-]{2,20})','g'); let m;
+    while((m=re.exec(t))){ const v=clean(m[1]); if(v.length>=2&&!isSelf(v)&&!['등록번호','사업자','성명'].some(x=>v.includes(x))) return v; }
   }
-  // 파일명에서 한글 단어 추출
-  const words=(filename||'').replace(/\.[^.]+$/,'').split(/[\s_\-\.\[\]\(\)]+/).filter(w=>/[가-힣]{2,}/.test(w) && !/명세|계산서|영수증|카드|세금|스캔|사진|image|img|scan/i.test(w));
+  // 3) 파일명에서 한글 단어 추출
+  const words=(filename||'').replace(/\.[^.]+$/,'').split(/[\s_\-\.\[\]\(\)]+/).filter(w=>/[가-힣]{2,}/.test(w) && !/명세|계산서|영수증|카드|세금|스캔|사진|촬영|image|img|scan/i.test(w) && !isSelf(w));
   return words[0]||'';
 }
 
@@ -578,6 +586,15 @@ function fillSub(p, category, value){
   sel.innerHTML=html; sel.value=value||''; inp.hidden=true; inp.value='';
   sel.onchange=()=>{ inp.hidden=sel.value!=='__custom'; if(!inp.hidden){ inp.value=''; inp.focus(); } };
 }
+function fillVendor(p, value){
+  const sel=$(p+'VendorSel'), inp=$(p+'Vendor');
+  const used=[...new Set(docs.map(d=>d.vendor).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
+  if(value && !used.includes(value)) used.unshift(value);
+  sel.innerHTML='<option value="">(없음)</option>'+used.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')+'<option value="__custom">직접 입력…</option>';
+  sel.value=value||''; inp.hidden=true; inp.value='';
+  sel.onchange=()=>{ inp.hidden=sel.value!=='__custom'; if(!inp.hidden){ inp.value=''; inp.focus(); } };
+}
+const getVendor=p=>{ const sel=$(p+'VendorSel'); return (sel.value==='__custom'?$(p+'Vendor').value:sel.value).trim(); };
 const getSub=p=>{ const sel=$(p+'SubSel'); return (sel.value==='__custom'?$(p+'Sub').value:sel.value).trim(); };
 $('dCat').onchange=()=>fillSub('d',$('dCat').value,'');
 $('mCat').onchange=()=>fillSub('m',$('mCat').value,'');
@@ -662,14 +679,14 @@ async function openDoc(id){
     else if(cur.ext==='pdf') pv.innerHTML=`<iframe src="${curURL}"></iframe>`;
     else pv.innerHTML=`<pre>${esc(cur.text||'미리보기를 지원하지 않는 형식입니다. 원본 내려받기로 열어 보세요.')}</pre>`;
   } else if(!cur.driveId) pv.innerHTML=`<pre>${esc(cur.memo||'직접 입력한 자료')}</pre>`;
-  $('dName').textContent=cur.name; $('dTitle').value=cur.title||''; $('dCat').value=cur.category; fillSub('d',cur.category,cur.sub||''); $('dVendor').value=cur.vendor||'';
+  $('dName').textContent=cur.name; $('dTitle').value=cur.title||''; $('dCat').value=cur.category; fillSub('d',cur.category,cur.sub||''); fillVendor('d',cur.vendor||'');
   $('dDate').value=cur.date||''; $('dAmount').value=cur.amount??''; $('dMemo').value=cur.memo||''; $('dText').textContent=cur.text||'(읽어낸 글자 없음)';
   $('dInfo').innerHTML=`${cur.ext||'입력'} · ${cur.size?(cur.size/1024).toFixed(0)+'KB · ':''}저장 ${(cur.addedAt||'').slice(0,16).replace('T',' ')}${cur.driveLink?` · <a href="${cur.driveLink}" target="_blank" rel="noopener">드라이브에서 열기</a>`:''}`;
   $('dConfirm').classList.remove('show');
 }
 function closeDoc(){ $('drawer').classList.remove('open'); if(curURL){URL.revokeObjectURL(curURL);curURL=null;} cur=null; }
 $('closeD').onclick=closeDoc; $('drawer').onclick=e=>{if(e.target===$('drawer'))closeDoc();};
-$('dSave').onclick=async()=>{ if(!cur)return; Object.assign(cur,{title:$('dTitle').value,category:$('dCat').value,sub:getSub('d'),vendor:$('dVendor').value.trim(),date:$('dDate').value,amount:$('dAmount').value===''?null:+$('dAmount').value,memo:$('dMemo').value}); await put(cur);
+$('dSave').onclick=async()=>{ if(!cur)return; Object.assign(cur,{title:$('dTitle').value,category:$('dCat').value,sub:getSub('d'),vendor:getVendor('d'),date:$('dDate').value,amount:$('dAmount').value===''?null:+$('dAmount').value,memo:$('dMemo').value}); await put(cur);
   if(driveOn()){ try{ if(cur.driveId) await driveUpdate(cur); else if(cur.blob) await driveUpload(cur), await put(cur); }catch(e){ toast('드라이브 반영 실패: '+e.message); } }
   await reload(); driveSaveIndexSoon(); toast('저장했습니다'); closeDoc(); };
 $('dReclass').onclick=async()=>{ if(!cur)return;
@@ -679,7 +696,7 @@ $('dReclass').onclick=async()=>{ if(!cur)return;
     let extra=''; if(cur.ext==='pdf') extra=await ocrPdfFirstPage(cur.blob); else { const u=URL.createObjectURL(cur.blob); extra=await ocrImage(u); URL.revokeObjectURL(u); }
     if(extra){ cur.text=((cur.text||'')+'\n'+extra).slice(0,20000); $('dText').textContent=cur.text; cl=classify(cur.text,cur.name); }
   }
-  $('dCat').value=cl.category; fillSub('d',cl.category,cl.sub); $('dVendor').value=extractVendor(cur.text,cur.name,cl.category)||cur.vendor||''; $('dDate').value=extractDate(cur.text,cur.name)||cur.date; const a=extractAmount(cur.text); if(a!=null)$('dAmount').value=a; toast('다시 분류했습니다. 확인 후 저장하세요'); };
+  $('dCat').value=cl.category; fillSub('d',cl.category,cl.sub); fillVendor('d',extractVendor(cur.text,cur.name,cl.category)||cur.vendor||''); $('dDate').value=extractDate(cur.text,cur.name)||cur.date; const a=extractAmount(cur.text); if(a!=null)$('dAmount').value=a; toast('다시 분류했습니다. 확인 후 저장하세요'); };
 $('dDown').onclick=async()=>{ if(!cur)return; if(!cur.blob&&cur.driveId&&driveOn()){ try{ await driveFetchBlob(cur); curURL=URL.createObjectURL(cur.blob); }catch(e){ toast('가져오기 실패'); return; } } if(!cur.blob){ if(cur.driveLink) window.open(cur.driveLink,'_blank'); return; } const a=document.createElement('a'); a.href=curURL||URL.createObjectURL(cur.blob); a.download=cur.name; a.click(); };
 $('dDel').onclick=()=>$('dConfirm').classList.add('show'); $('dDelNo').onclick=()=>$('dConfirm').classList.remove('show');
 $('dDelYes').onclick=async()=>{ if(!cur)return; if(driveOn()&&cur.driveId){ try{ await driveTrash(cur); }catch(e){ toast('드라이브 휴지통 이동 실패: '+e.message); } } await del(cur.id); await reload(); driveSaveIndexSoon(); toast('삭제했습니다'); closeDoc(); };
@@ -702,13 +719,13 @@ function stopCam(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=nu
 $('camClose').onclick=stopCam;
 $('shot').onclick=()=>{ const v=$('video'); const c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0);
   c.toBlob(b=>{ const name=`촬영_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.jpg`; addFiles([new File([b],name,{type:'image/jpeg'})]); stopCam(); },'image/jpeg',0.92); };
-$('manualBtn').onclick=()=>{$('manual').hidden=!$('manual').hidden;$('mDate').value=new Date().toISOString().slice(0,10);fillSub('m',$('mCat').value,'');};
+$('manualBtn').onclick=()=>{$('manual').hidden=!$('manual').hidden;$('mDate').value=new Date().toISOString().slice(0,10);fillSub('m',$('mCat').value,'');fillVendor('m','');};
 $('mCancel').onclick=()=>$('manual').hidden=true;
 $('mSave').onclick=async()=>{
   const title=$('mTitle').value.trim(); if(!title){toast('제목을 입력해 주세요');return;}
-  const rec={id:Date.now()+'-'+Math.random().toString(36).slice(2,8),name:title,title,type:'',ext:'',size:0,category:$('mCat').value,sub:getSub('m'),vendor:$('mVendor').value.trim(),date:$('mDate').value,amount:$('mAmount').value===''?null:+$('mAmount').value,memo:$('mMemo').value,text:$('mMemo').value,addedAt:new Date().toISOString(),blob:null};
+  const rec={id:Date.now()+'-'+Math.random().toString(36).slice(2,8),name:title,title,type:'',ext:'',size:0,category:$('mCat').value,sub:getSub('m'),vendor:getVendor('m'),date:$('mDate').value,amount:$('mAmount').value===''?null:+$('mAmount').value,memo:$('mMemo').value,text:$('mMemo').value,addedAt:new Date().toISOString(),blob:null};
   if(!rec.sub&&!rec.vendor){const cl=classify(title+' '+rec.memo,'');if(cl.category!=='사진·기타'&&!$('mCat').value)rec.category=cl.category;rec.sub=cl.sub;}
-  await put(rec); ['mTitle','mVendor','mAmount','mSub','mMemo'].forEach(i=>$(i).value=''); $('mSubSel').value=''; $('manual').hidden=true; await reload(); driveSaveIndexSoon(); toast('저장했습니다');
+  await put(rec); ['mTitle','mVendor','mAmount','mSub','mMemo'].forEach(i=>$(i).value=''); $('mSubSel').value=''; $('mVendorSel').value=''; $('manual').hidden=true; await reload(); driveSaveIndexSoon(); toast('저장했습니다');
 };
 $('q').oninput=e=>{filter.q=e.target.value;render();}; $('clearq').onclick=()=>{$('q').value='';filter.q='';render();};
 $('fCat').onchange=e=>{filter.cat=e.target.value;filter.sub='';filter.vendor='';syncFilters();};
